@@ -19,7 +19,7 @@ use std::{
 /// # Example
 ///
 /// ```
-/// use linalg_core::matrix::*;
+/// use linalg::matrix::*;
 ///
 /// let layout = MatrixLayout::new(2, 3);
 /// let matrix = Matrix::fill(layout, 0usize);
@@ -61,13 +61,13 @@ impl MatrixLayout {
     /// Indicator if the layout macthes a row vector.
     #[inline(always)]
     pub fn is_rowvec(&self) -> bool {
-        self.cols == 1
+        self.rows == 1
     }
 
     /// Indicator if the layout macthes a collum vector.
     #[inline(always)]
     pub fn is_colvec(&self) -> bool {
-        self.rows == 1
+        self.cols == 1
     }
 
     ///
@@ -79,7 +79,7 @@ impl MatrixLayout {
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let layout = MatrixLayout::new(2, 3);
     /// assert!(layout.index((1, 1)) == 4);
@@ -120,7 +120,7 @@ impl MatrixLayout {
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let data = vec![
     ///     vec![1, 2, 3],
@@ -174,7 +174,7 @@ impl Default for MatrixLayout {
 /// # Example
 ///
 /// ```
-/// use linalg_core::matrix::*;
+/// use linalg::matrix::*;
 ///
 /// let matrix: Matrix<usize> = Matrix::fill(MatrixLayout::new(2, 3), 0);
 /// assert!(matrix.size() == 2*3);
@@ -237,7 +237,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let matrix = Matrix::fill(MatrixLayout::new(2, 3), 0usize);
     /// assert!(matrix[(0, 0)] == 0usize);
@@ -263,7 +263,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
     /// assert!(matrix.layout().is_square());
@@ -290,7 +290,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let eye = Matrix::eye(3, 1, 0usize);
     /// assert!(eye.layout().is_square());
@@ -374,6 +374,22 @@ impl<T> IntoIterator for Matrix<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.raw.into_iter()
+    }
+}
+
+impl<T> Index<usize> for Matrix<T> {
+    type Output = T;
+
+    #[inline(always)]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.raw[index]
+    }
+}
+
+impl<T> IndexMut<usize> for Matrix<T> {
+    #[inline(always)]
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.raw[index]
     }
 }
 
@@ -760,7 +776,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let diag = Matrix::diag(vec![1, 2, 3], 42usize);
     /// assert!(*diag.layout() == MatrixLayout::new(3, 3));
@@ -787,7 +803,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     /// use std::convert::TryFrom;
     ///
     /// let mut matrix = Matrix::<usize>::try_from(vec![
@@ -810,7 +826,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     /// use std::convert::TryFrom;
     ///
     /// let matrix = Matrix::<usize>::try_from(vec![
@@ -851,7 +867,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
     /// let double = matrix.scalar(2);
@@ -885,7 +901,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg_core::matrix::*;
+    /// use linalg::matrix::*;
     ///
     /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
     /// let mut double = matrix.clone();
@@ -899,6 +915,36 @@ where
         for k in 0..self.layout.size() {
             self.raw[k] = scalar * self.raw[k];
         }
+    }
+}
+
+impl<T> Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy + Default,
+{
+    pub fn mmul(&self, rhs: Self) -> Self {
+        assert!(self.layout.cols == rhs.layout.rows);
+
+        let layout = MatrixLayout {
+            rows: self.layout.rows,
+            cols: rhs.layout.cols,
+        };
+
+        // SAFTY:
+        // Matrix Multiplication gurantees the setting of all
+        let mut result = Matrix::uninitalized(layout);
+
+        for i in 0..result.layout.rows {
+            for j in 0..result.layout.cols {
+                let mut sum = T::default();
+                for k in 0..self.layout.cols {
+                    sum = sum + self[(i, k)] * rhs[(k, j)];
+                }
+                result[(i, j)] = sum;
+            }
+        }
+
+        result
     }
 }
 
