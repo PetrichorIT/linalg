@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::matrix::Matrix;
+use crate::matrix::{Matrix, MatrixLayout};
 
 ///
 /// A mathematical LR-Decomposition of a square matrix A into
@@ -109,8 +109,6 @@ impl LrDecomposition<f64> {
             y[i] = (pb[i] - s) / self.l[(i, i)];
         }
 
-        println!("y: {}", y);
-
         let mut x = Matrix::fill(b.layout().clone(), 0.0);
         for i in (0..self.l.layout().rows()).rev() {
             let mut s = 0.0;
@@ -131,5 +129,90 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "L:\n {}\nR:\n{}\nP:\n{}\n", self.l, self.r, self.p)
+    }
+}
+
+///
+/// An algebraic QR-Decomposition of an abitraty matrix A.
+///
+#[derive(Debug, Clone)]
+pub struct QrDecomposition<T> {
+    pub q: Matrix<T>,
+    pub r: Matrix<T>,
+}
+
+impl QrDecomposition<f64> {
+    pub fn create(a: Matrix<f64>) -> Self {
+        let mut r = a;
+        let mut q = Matrix::eye(r.layout().rows(), 1.0, 0.0);
+
+        for c in 0..(r.layout().cols() - 1) {
+            let mut v = Matrix::fill(MatrixLayout::new(r.layout().rows(), 1), 0.0);
+            for i in c..v.size() {
+                v[i] = r[(i, c)];
+            }
+
+            let sign = v[c].signum();
+            let norm = v.raw().iter().fold(0.0, |acc, &s| acc + s * s).sqrt();
+
+            v[c] += sign * norm;
+
+            let norm = v.raw().iter().fold(0.0, |acc, &s| acc + s * s).sqrt();
+            for i in c..v.size() {
+                v[i] /= norm;
+            }
+
+            let mut h = v.clone() * v.transposed();
+            h.scale(2.0);
+
+            let qi = Matrix::eye(r.layout().rows(), 1.0, 0.0) - h;
+
+            r = Matrix::mmul(&qi, r);
+            q = Matrix::mmul(&qi.transposed(), q);
+        }
+
+        // Zero-Fragment cleanup
+
+        for k in 0..r.size() {
+            if r[k].abs() < 0.0001 {
+                r[k] = 0.0;
+            }
+        }
+
+        QrDecomposition { q, r }
+    }
+
+    pub fn solve(&self, b: Matrix<f64>) -> Matrix<f64> {
+        assert!(b.layout().is_colvec());
+        assert!(self.q.layout().rows() == b.size());
+
+        // QR = A
+        // ==> Qy = b ==> y = Q^T b
+        // ==> Rx = y
+
+        // preinit to prevent borrowing issues
+        let mut x = Matrix::fill(b.layout().clone(), 0.0);
+
+        let y = Matrix::mmul(&self.q, b);
+
+        for i in (0..self.r.layout().rows()).rev() {
+            let mut s = 0.0;
+            for j in (i + 1)..self.r.layout().cols() {
+                s += self.r[(i, j)] * x[j]
+            }
+
+            x[i] = (y[i] - s) / self.r[(i, i)];
+        }
+
+        x
+    }
+}
+
+impl<T> Display for QrDecomposition<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "=== Q ===\n{}\n=== R ===\n{}\n", self.q, self.r)
     }
 }
