@@ -5,10 +5,28 @@ use std::{
     mem::swap,
     ops::{
         Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Index,
-        IndexMut, Mul,
+        IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
     },
 };
 
+///
+/// A description of a 2d-matrix dimensions.
+///
+/// This type represents the layout of a two-dimensional matrix
+/// defined by rows and collums. This type should be used in conjunction
+/// with the generic `Matrix` struct.
+///
+/// # Example
+///
+/// ```
+/// use linalg_core::matrix::*;
+///
+/// let layout = MatrixLayout::new(2, 3);
+/// let matrix = Matrix::fill(layout, 0usize);
+/// assert!(matrix.layout().rows() == 2 && matrix.layout().cols() == 3);
+/// assert!(matrix[(0, 0)] == 0usize);
+/// ```
+///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatrixLayout {
     rows: usize,
@@ -16,35 +34,68 @@ pub struct MatrixLayout {
 }
 
 impl MatrixLayout {
+    /// The number of rows in the matrix.
+    #[inline]
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
+
+    /// The number of collums in the matrix.
+    #[inline]
+    pub fn cols(&self) -> usize {
+        self.cols
+    }
+
+    /// The total number of cells in the matrix.
     #[inline(always)]
     pub fn size(&self) -> usize {
         self.rows * self.cols
     }
 
+    /// Indicator if the layout matches a square matrix layout.
     #[inline(always)]
     pub fn is_square(&self) -> bool {
         self.rows == self.cols
     }
 
+    /// Indicator if the layout macthes a row vector.
     #[inline(always)]
     pub fn is_rowvec(&self) -> bool {
         self.cols == 1
     }
 
+    /// Indicator if the layout macthes a collum vector.
     #[inline(always)]
     pub fn is_colvec(&self) -> bool {
         self.rows == 1
     }
 
+    ///
+    /// A conversion function from a two-dimensional index to a
+    /// one-dimensional index for the raw buffer.
+    /// This conversion follows the following formular:
+    /// BufferIndex = Index_Row * Collum_Size + Index_Collum
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let layout = MatrixLayout::new(2, 3);
+    /// assert!(layout.index((1, 1)) == 4);
+    /// ```
+    ///
     #[inline(always)]
     pub fn index(&self, index: (usize, usize)) -> usize {
         index.0 * self.cols + index.1
     }
 
+    /// Performs an inplace transposition of the layout.
     pub fn transpose(&mut self) {
         swap(&mut self.rows, &mut self.cols)
     }
 
+    /// Performs an out-of-place transposition of the layout and returns the result.
     pub fn transposed(&self) -> Self {
         MatrixLayout {
             rows: self.cols,
@@ -54,6 +105,33 @@ impl MatrixLayout {
 }
 
 impl MatrixLayout {
+    /// Creates a new matrix layout.
+    #[inline]
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self { rows, cols }
+    }
+
+    ///
+    /// Tries to generate a layout based on a given two-dimensonal vector of elements.
+    /// This layout will try to match the given dataset.
+    /// This conversion will fail if the stuctured data has an irregular format,
+    /// meaning there a rows with a different number of elements in them.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let data = vec![
+    ///     vec![1, 2, 3],
+    ///     vec![4, 5, 6],
+    /// ];
+    ///
+    /// let layout = MatrixLayout::assumed_from(&data);
+    /// assert!(layout.is_ok());
+    /// assert!(layout.unwrap() == MatrixLayout::new(2, 3));
+    /// ```
+    ///
     pub fn assumed_from<T>(structured: &Vec<Vec<T>>) -> Result<Self, &'static str> {
         let rows = structured.len();
         if rows == 0 {
@@ -70,6 +148,7 @@ impl MatrixLayout {
         Ok(MatrixLayout { rows, cols })
     }
 
+    /// Generates a square matrix layout, given the edge size.
     #[inline]
     pub fn square(size: usize) -> Self {
         Self {
@@ -86,13 +165,46 @@ impl Default for MatrixLayout {
 }
 
 ///
-/// Matrix
+/// A two-dimensional matrix of generic elements.
 ///
-
+/// This struct contains a layout element of type [MatrixLayout] and
+/// a raw buffer to store matrix cells. The size of the raw buffer thereby is
+/// defined by the layouts [MatrixLayout::size()] function.
+///
+/// # Example
+///
+/// ```
+/// use linalg_core::matrix::*;
+///
+/// let matrix: Matrix<usize> = Matrix::fill(MatrixLayout::new(2, 3), 0);
+/// assert!(matrix.size() == 2*3);
+/// assert!(matrix[(0, 0)] == 0);
+/// ```
+///
 #[derive(Debug, Clone)]
 pub struct Matrix<T> {
-    pub layout: MatrixLayout,
-    pub raw: Vec<T>,
+    layout: MatrixLayout,
+    raw: Vec<T>,
+}
+
+impl<T> Matrix<T> {
+    /// The layout constraints definig the matrix.
+    #[inline(always)]
+    pub fn layout(&self) -> &MatrixLayout {
+        &self.layout
+    }
+
+    /// The raw buffer where the cells are stored.
+    #[inline(always)]
+    pub fn raw(&self) -> &Vec<T> {
+        &self.raw
+    }
+
+    /// The total number of cells in the raw buffer (used).
+    #[inline(always)]
+    pub fn size(&self) -> usize {
+        self.layout.size()
+    }
 }
 
 ///
@@ -100,6 +212,8 @@ pub struct Matrix<T> {
 ///
 
 impl<T> Matrix<T> {
+    /// Creates a new matrix with an allocated but uninialized
+    /// memory buffer.
     fn uninitalized(layout: MatrixLayout) -> Self {
         let mut raw = Vec::with_capacity(layout.size());
 
@@ -116,6 +230,20 @@ impl<T> Matrix<T>
 where
     T: Copy,
 {
+    ///
+    /// Creates a new matrix with the given layout filling all cells
+    /// with the given filler element.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let matrix = Matrix::fill(MatrixLayout::new(2, 3), 0usize);
+    /// assert!(matrix[(0, 0)] == 0usize);
+    /// assert!(matrix[(1, 2)] == 0usize);
+    /// ```
+    ///
     pub fn fill(layout: MatrixLayout, filler: T) -> Self {
         // SAFTY:
         // Can be used since the underling vector will be filled according to its
@@ -128,6 +256,22 @@ where
         matrix
     }
 
+    ///
+    /// Create a new diagonal matrix using the given vector, filling all
+    /// other cells with the filler element.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
+    /// assert!(matrix.layout().is_square());
+    /// assert!(matrix.layout().rows() == 3);
+    /// assert!(matrix[(0, 0)] == 1);
+    /// assert!(matrix[(1, 1)] == 2);
+    /// ```
+    ///
     pub fn diag(vec: Vec<T>, filler: T) -> Self {
         let layout = MatrixLayout::square(vec.len());
 
@@ -139,6 +283,21 @@ where
         matrix
     }
 
+    ///
+    /// Creates a new eye-matrix with the given eye element
+    /// filling the remaing cells with the filler element.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let eye = Matrix::eye(3, 1, 0usize);
+    /// assert!(eye.layout().is_square());
+    /// assert!(eye.layout().rows() == 3);
+    /// assert!(eye[(1, 1)] == 1);
+    /// ```
+    ///
     pub fn eye(size: usize, eye: T, filler: T) -> Self {
         let layout = MatrixLayout::square(size);
 
@@ -190,35 +349,6 @@ impl<T> From<Vec<T>> for Matrix<T> {
             },
             raw,
         }
-    }
-}
-
-///
-/// Matrix: Operations
-///
-
-impl<T> Matrix<T>
-where
-    T: Copy,
-{
-    pub fn transpose(&mut self) {
-        *self = self.transposed()
-    }
-
-    pub fn transposed(&self) -> Self {
-        // SAFTY:
-        // Since the tranposed matrix has the transposed layout
-        // and thus the same size requirements for the raw vector
-        // there must be a eqivalent value for each cell in the original matrix
-        let mut transposed = Matrix::uninitalized(self.layout.transposed());
-
-        for i in 0..transposed.layout.rows {
-            for j in 0..transposed.layout.cols {
-                transposed[(i, j)] = self[(j, i)]
-            }
-        }
-
-        transposed
     }
 }
 
@@ -360,6 +490,43 @@ where
         assert!(self.layout == rhs.layout);
         for i in 0..self.raw.len() {
             self.raw[i].add_assign(rhs.raw[i])
+        }
+    }
+}
+
+///
+/// Matrix: Subtraction
+///
+
+impl<T> Sub for Matrix<T>
+where
+    T: Sub + Copy,
+{
+    type Output = Matrix<T::Output>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        assert!(self.layout == rhs.layout);
+
+        // SAFTY: Since the iteration will follow the raw vector thus will fill
+        // all elements. Since layouts are equal, all operands are indeed provided
+        let mut result = Matrix::uninitalized(self.layout);
+
+        for i in 0..result.raw.len() {
+            result.raw[i] = self.raw[i].sub(rhs.raw[i]);
+        }
+
+        result
+    }
+}
+
+impl<T> SubAssign for Matrix<T>
+where
+    T: SubAssign + Copy,
+{
+    fn sub_assign(&mut self, rhs: Self) {
+        assert!(self.layout == rhs.layout);
+        for i in 0..self.raw.len() {
+            self.raw[i].sub_assign(rhs.raw[i])
         }
     }
 }
@@ -511,6 +678,36 @@ where
     }
 }
 
+impl<T> MulAssign for Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy + Default,
+{
+    fn mul_assign(&mut self, rhs: Self) {
+        assert!(self.layout.cols == rhs.layout.rows);
+
+        let layout = MatrixLayout {
+            rows: self.layout.rows,
+            cols: rhs.layout.cols,
+        };
+
+        // SAFTY:
+        // Matrix Multiplication gurantees the setting of all
+        let mut result = Matrix::uninitalized(layout);
+
+        for i in 0..result.layout.rows {
+            for j in 0..result.layout.cols {
+                let mut sum = T::default();
+                for k in 0..self.layout.cols {
+                    sum = sum + self[(i, k)] * rhs[(k, j)];
+                }
+                result[(i, j)] = sum;
+            }
+        }
+
+        *self = result
+    }
+}
+
 ///
 /// Matrix: Misc Traits
 ///
@@ -538,3 +735,192 @@ where
         write!(f, "{}", str)
     }
 }
+
+///
+/// # Generic algebraic operations
+///
+/// A collection of algebraic operation that are generic and only bound by
+/// internal Rust-Traits.
+/// This grouping does not include more specific operations (e.g. det() or eig())
+/// which will be implemented in a specific way to improve computational efficenicy.
+///
+
+impl<T> Matrix<T>
+where
+    T: Add<Output = T> + Copy + Default,
+{
+    ///
+    /// Calculates the sum of diagonal elements (the trace) of a square matrix
+    /// using the default element as zero.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if applied to a non-square matrix.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let diag = Matrix::diag(vec![1, 2, 3], 42usize);
+    /// assert!(*diag.layout() == MatrixLayout::new(3, 3));
+    /// assert!(diag.trace() == 6);
+    /// ```
+    ///
+    pub fn trace(&self) -> T {
+        assert!(self.layout.is_square());
+        let mut sum = T::default();
+        for i in 0..self.layout.rows {
+            sum = sum.add(self[(i, i)])
+        }
+        sum
+    }
+}
+
+impl<T> Matrix<T>
+where
+    T: Copy,
+{
+    ///
+    /// Transposes the matrix with a out-of-place new buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let mut matrix = Matrix::<usize>::try_from(vec![
+    ///     vec![1, 2, 3usize],
+    ///     vec![4, 5, 6],
+    /// ]).unwrap();
+    /// matrix.transpose();
+    ///
+    /// assert!(*matrix.layout() == MatrixLayout::new(3, 2));
+    /// assert!(matrix[(2, 1)] == 6);
+    /// ```
+    ///
+    pub fn transpose(&mut self) {
+        *self = self.transposed()
+    }
+
+    ///
+    /// Returns a new out-of-place transposed matrix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    /// use std::convert::TryFrom;
+    ///
+    /// let matrix = Matrix::<usize>::try_from(vec![
+    ///     vec![1, 2, 3usize],
+    ///     vec![4, 5, 6],
+    /// ]).unwrap();
+    /// let matrix = matrix.transposed();
+    ///
+    /// assert!(*matrix.layout() == MatrixLayout::new(3, 2));
+    /// assert!(matrix[(2, 1)] == 6);
+    /// ```
+    ///
+    pub fn transposed(&self) -> Self {
+        // SAFTY:
+        // Since the tranposed matrix has the transposed layout
+        // and thus the same size requirements for the raw vector
+        // there must be a eqivalent value for each cell in the original matrix
+        let mut transposed = Matrix::uninitalized(self.layout.transposed());
+
+        for i in 0..transposed.layout.rows {
+            for j in 0..transposed.layout.cols {
+                transposed[(i, j)] = self[(j, i)]
+            }
+        }
+
+        transposed
+    }
+}
+
+impl<T> Matrix<T>
+where
+    T: Mul + Copy,
+{
+    ///
+    /// Performs a scalar multiplication with the given scalar
+    /// returning a new matrix as result.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
+    /// let double = matrix.scalar(2);
+    /// assert!(matrix.layout() == double.layout());
+    /// assert!(2 * matrix[(0, 0)] == double[(0, 0)]);
+    /// assert!(2 * matrix[(2, 0)] == double[(2, 0)]);
+    /// ```
+    ///
+    pub fn scalar(&self, scalar: T) -> Matrix<T::Output> {
+        // SAFTY:
+        // Matix is identical in layout, so all cells will be filled,
+        // cause iteration over raw values
+        let mut result = Matrix::uninitalized(self.layout.clone());
+
+        for k in 0..self.layout.size() {
+            result.raw[k] = scalar * self.raw[k];
+        }
+
+        result
+    }
+}
+
+impl<T> Matrix<T>
+where
+    T: Mul<Output = T> + Copy,
+{
+    ///
+    /// Performs a scalar multiplication in-place with all elements of
+    /// the given matrix.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg_core::matrix::*;
+    ///
+    /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
+    /// let mut double = matrix.clone();
+    /// double.scale(2);
+    /// assert!(matrix.layout() == double.layout());
+    /// assert!(2 * matrix[(0, 0)] == double[(0, 0)]);
+    /// assert!(2 * matrix[(2, 0)] == double[(2, 0)]);
+    /// ```
+    ///
+    pub fn scale(&mut self, scalar: T) {
+        for k in 0..self.layout.size() {
+            self.raw[k] = scalar * self.raw[k];
+        }
+    }
+}
+
+impl<T> Neg for Matrix<T>
+where
+    T: Neg + Copy,
+{
+    type Output = Matrix<T::Output>;
+
+    fn neg(self) -> Self::Output {
+        // SAFTY:
+        // Matrix shares same layout thus all cells will be initalized with a raw iteration.
+        let mut result = Matrix::uninitalized(self.layout.clone());
+
+        for k in 0..self.layout.size() {
+            result.raw[k] = self.raw[k].neg();
+        }
+
+        result
+    }
+}
+
+//
+// Matrix: Power  TODO
+//

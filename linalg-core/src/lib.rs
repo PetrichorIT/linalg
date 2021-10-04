@@ -1,3 +1,4 @@
+pub mod lse;
 pub mod matrix;
 
 #[cfg(test)]
