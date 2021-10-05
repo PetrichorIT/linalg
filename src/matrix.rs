@@ -207,20 +207,16 @@ impl<T> Matrix<T> {
     }
 }
 
-///
-/// Matrix: Construction
-///
-
 impl<T> Matrix<T> {
     /// Creates a new matrix with an allocated but uninialized
     /// memory buffer.
-    fn uninitalized(layout: MatrixLayout) -> Self {
+    pub unsafe fn uninitalized(layout: MatrixLayout) -> Self {
         let mut raw = Vec::with_capacity(layout.size());
 
         // SAFTY:
         // This function will only be called internally in its 'unsafe' but not
         // outwardly unsafe shape, to create buffers and such.
-        unsafe { raw.set_len(layout.size()) }
+        raw.set_len(layout.size());
 
         Self { layout, raw }
     }
@@ -249,7 +245,7 @@ where
         // Can be used since the underling vector will be filled according to its
         // own len, thus all cells used are guarnteed to be there
         // since the vector has the given size AND capacity
-        let mut matrix = Self::uninitalized(layout);
+        let mut matrix = unsafe { Self::uninitalized(layout) };
         for cell in &mut matrix.raw {
             *cell = filler;
         }
@@ -488,7 +484,7 @@ where
 
         // SAFTY: Since the iteration will follow the raw vector thus will fill
         // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = Matrix::uninitalized(self.layout);
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
 
         for i in 0..result.raw.len() {
             result.raw[i] = self.raw[i].add(rhs.raw[i]);
@@ -525,7 +521,7 @@ where
 
         // SAFTY: Since the iteration will follow the raw vector thus will fill
         // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = Matrix::uninitalized(self.layout);
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
 
         for i in 0..result.raw.len() {
             result.raw[i] = self.raw[i].sub(rhs.raw[i]);
@@ -562,7 +558,7 @@ where
 
         // SAFTY: Since the iteration will follow the raw vector thus will fill
         // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = Matrix::uninitalized(self.layout);
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
 
         for i in 0..result.raw.len() {
             result.raw[i] = self.raw[i].bitand(rhs.raw[i]);
@@ -599,7 +595,7 @@ where
 
         // SAFTY: Since the iteration will follow the raw vector thus will fill
         // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = Matrix::uninitalized(self.layout);
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
 
         for i in 0..result.raw.len() {
             result.raw[i] = self.raw[i].bitor(rhs.raw[i]);
@@ -636,7 +632,7 @@ where
 
         // SAFTY: Since the iteration will follow the raw vector thus will fill
         // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = Matrix::uninitalized(self.layout);
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
 
         for i in 0..result.raw.len() {
             result.raw[i] = self.raw[i].bitxor(rhs.raw[i]);
@@ -678,7 +674,7 @@ where
 
         // SAFTY:
         // Matrix Multiplication gurantees the setting of all
-        let mut result = Matrix::uninitalized(layout);
+        let mut result = unsafe { Matrix::uninitalized(layout) };
 
         for i in 0..result.layout.rows {
             for j in 0..result.layout.cols {
@@ -708,7 +704,7 @@ where
 
         // SAFTY:
         // Matrix Multiplication gurantees the setting of all
-        let mut result = Matrix::uninitalized(layout);
+        let mut result = unsafe { Matrix::uninitalized(layout) };
 
         for i in 0..result.layout.rows {
             for j in 0..result.layout.cols {
@@ -844,7 +840,7 @@ where
         // Since the tranposed matrix has the transposed layout
         // and thus the same size requirements for the raw vector
         // there must be a eqivalent value for each cell in the original matrix
-        let mut transposed = Matrix::uninitalized(self.layout.transposed());
+        let mut transposed = unsafe { Matrix::uninitalized(self.layout.transposed()) };
 
         for i in 0..transposed.layout.rows {
             for j in 0..transposed.layout.cols {
@@ -880,7 +876,7 @@ where
         // SAFTY:
         // Matix is identical in layout, so all cells will be filled,
         // cause iteration over raw values
-        let mut result = Matrix::uninitalized(self.layout.clone());
+        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
 
         for k in 0..self.layout.size() {
             result.raw[k] = scalar * self.raw[k];
@@ -932,7 +928,7 @@ where
 
         // SAFTY:
         // Matrix Multiplication gurantees the setting of all
-        let mut result = Matrix::uninitalized(layout);
+        let mut result = unsafe { Matrix::uninitalized(layout) };
 
         for i in 0..result.layout.rows {
             for j in 0..result.layout.cols {
@@ -957,7 +953,7 @@ where
     fn neg(self) -> Self::Output {
         // SAFTY:
         // Matrix shares same layout thus all cells will be initalized with a raw iteration.
-        let mut result = Matrix::uninitalized(self.layout.clone());
+        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
 
         for k in 0..self.layout.size() {
             result.raw[k] = self.raw[k].neg();

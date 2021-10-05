@@ -1,3 +1,4 @@
+pub mod lop;
 pub mod lse;
 pub mod matrix;
 
