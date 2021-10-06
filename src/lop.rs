@@ -1,4 +1,4 @@
-use std::{mem::swap, ops::Neg};
+use std::{fmt::Display, mem::swap, ops::Neg};
 
 use crate::matrix::{Matrix, MatrixLayout};
 
@@ -208,6 +208,8 @@ impl LinearOpimizationProblem<f64> {
                     iteration: p1_itr,
                     pv_row: pv_row,
                     pv_col: pv_col,
+                    base_vars: base_vars.clone(),
+                    non_base_vars: non_base_vars.clone(),
                     matrix: mat.clone(),
                 })
             }
@@ -215,7 +217,7 @@ impl LinearOpimizationProblem<f64> {
             let pv = mat[(pv_row, pv_col)];
 
             // Swap indices
-            swap(&mut base_vars[pv_col], &mut non_base_vars[pv_col]);
+            swap(&mut base_vars[pv_col], &mut non_base_vars[pv_row]);
 
             let old = mat.clone();
             for row in 0..mat.layout().rows() {
@@ -239,6 +241,8 @@ impl LinearOpimizationProblem<f64> {
                 iteration: p1_itr,
                 pv_row: usize::MAX,
                 pv_col: usize::MAX,
+                base_vars: base_vars.clone(),
+                non_base_vars: non_base_vars.clone(),
                 matrix: mat.clone(),
             })
         }
@@ -263,7 +267,7 @@ impl LinearOpimizationProblem<f64> {
         let mut col_idx = 0;
         for col in 0..mat.layout().cols() {
             if (col != mat.layout().cols() - 1)
-                && (base_vars[col] < (number_of_vars - self.a_eq.layout().rows()))
+                && (base_vars[col] >= (number_of_vars - self.a_eq.layout().rows()))
             {
                 continue;
             }
@@ -344,6 +348,8 @@ impl LinearOpimizationProblem<f64> {
                     iteration: p2_itr,
                     pv_row: pv_row,
                     pv_col: pv_col,
+                    base_vars: base_vars.clone(),
+                    non_base_vars: non_base_vars.clone(),
                     matrix: mx.clone(),
                 })
             }
@@ -376,6 +382,8 @@ impl LinearOpimizationProblem<f64> {
                 iteration: p2_itr,
                 pv_row: usize::MAX,
                 pv_col: usize::MAX,
+                base_vars: base_vars.clone(),
+                non_base_vars: non_base_vars.clone(),
                 matrix: mx.clone(),
             })
         }
@@ -450,8 +458,99 @@ pub struct LOPIncrement<T> {
     pub pv_row: usize,
     /// The collum index of the current pivot.
     pub pv_col: usize,
+    /// Non-Zero vars in simplex
+    pub base_vars: Vec<usize>,
+    /// Zero vars in simplex
+    pub non_base_vars: Vec<usize>,
     /// The current simplex tablau.
     pub matrix: Matrix<T>,
+}
+
+impl<T> Display for LOPIncrement<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // MAIN
+
+        // A Table cell will have 7 characters with 1 character padding
+        // meaning 8 characters per cell
+        // exepte the last line that cannot be pivoted so - 2
+        // -> self.matrix.size() * 8 - 2
+        let line_size = self.matrix.layout().cols() * 9;
+
+        // addionaly ther will be tow vertical splitter before and after the main part a 2 chars
+        // -> self.matrix.layout().rows() * 2 * 2
+        let line_size = line_size + 2 * 2;
+
+        // there will be a sign prefix (5 char) and a linebreak (1 char)
+        // -> self.matrix.layout().rows() * 6
+        let line_size = line_size + 6;
+
+        // There will be self.matrix.layout().rows() lines with an addional two headers
+        // + one empty check byte
+        let size = line_size * (self.matrix.layout().rows() + 2) + 1;
+
+        let mut str = String::with_capacity(size);
+
+        // Line 1
+
+        let phase_label = format!(
+            "{:>4} ",
+            if self.phase == 1 {
+                format!("N:{}", self.iteration)
+            } else {
+                format!("S:{}", self.iteration)
+            }
+        );
+        str.push_str(&phase_label);
+        str.push_str("| ");
+        for bv in &self.base_vars {
+            let s = format!("{:>8} ", format!("x{}", bv));
+            str.push_str(&s);
+        }
+        str.push_str("|       \n");
+
+        // Line 2
+
+        for _ in 0..(line_size) {
+            str.push('-')
+        }
+        str.push('\n');
+
+        // N lines
+        for i in 0..self.matrix.layout().rows() {
+            let label = match i >= self.non_base_vars.len() {
+                true => match i - self.non_base_vars.len() {
+                    0 => String::from("(H)"),
+                    _ => String::from("(P)"),
+                },
+                false => format!("x{}", self.non_base_vars[i]),
+            };
+
+            let label = format!("{:>4} ", label);
+            str.push_str(&label);
+            str.push_str("| ");
+
+            // for m - 1 cells
+            for j in 0..(self.matrix.layout().cols() - 1) {
+                let element = if (i, j) == (self.pv_row, self.pv_col) {
+                    format!("[{:>6}] ", self.matrix[(i, j)])
+                } else {
+                    format!(" {:>6}  ", self.matrix[(i, j)])
+                };
+                str.push_str(&element);
+            }
+
+            str.push_str("| ");
+            str.push_str(&format!(
+                "{:>6}\n",
+                self.matrix[(i, self.matrix.layout().cols() - 1)]
+            ));
+        }
+
+        write!(f, "{}", str)
+    }
 }
 
 ///
@@ -466,4 +565,23 @@ pub struct LOPSolution<T> {
     pub fval: T,
     /// A vector of incremental steps of the simplex algorihtm (empty if non-verbose run).
     pub increments: Vec<LOPIncrement<T>>,
+}
+
+impl<T> Display for LOPSolution<T>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "=== LOP Solution ===\n")?;
+
+        if self.increments.is_empty() {
+            "<> No logged incr <>".fmt(f)?
+        } else {
+            for x in &self.increments {
+                x.fmt(f)?
+            }
+        }
+
+        write!(f, "\n {} ==> {}", self.x, self.fval)
+    }
 }

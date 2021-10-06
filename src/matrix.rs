@@ -164,6 +164,15 @@ impl Default for MatrixLayout {
     }
 }
 
+impl From<(usize, usize)> for MatrixLayout {
+    fn from(tupel: (usize, usize)) -> Self {
+        Self {
+            rows: tupel.0,
+            cols: tupel.1,
+        }
+    }
+}
+
 ///
 /// A two-dimensional matrix of generic elements.
 ///
@@ -219,6 +228,16 @@ impl<T> Matrix<T> {
         raw.set_len(layout.size());
 
         Self { layout, raw }
+    }
+
+    pub fn new<U>(layout: U, raw: Vec<T>) -> Self
+    where
+        U: Into<MatrixLayout>,
+    {
+        Self {
+            layout: layout.into(),
+            raw,
+        }
     }
 }
 

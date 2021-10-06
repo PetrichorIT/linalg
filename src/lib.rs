@@ -5,6 +5,8 @@ pub mod matrix;
 #[cfg(test)]
 mod tests {
 
+    use crate::lop::LOPOptions;
+    use crate::lop::LOP;
     use crate::lse::*;
     use crate::matrix::*;
     use std::convert::TryFrom;
@@ -34,5 +36,30 @@ mod tests {
         let bb = matrix * x;
 
         println!("{}", bb);
+    }
+
+    #[test]
+    fn lop() {
+        let lop = LOP::new(
+            Matrix::from(vec![1.0, -3.0, 2.0, 0.0, 0.0]),
+            0.0,
+            Matrix::new((1, 5), vec![1.0, 0.0, -1.0, 0.0, 0.0]),
+            Matrix::from(vec![4.0]),
+            Matrix::new(
+                (2, 5),
+                vec![1.0, -1.0, 0.0, -1.0, 0.0, 0.0, 1.0, -2.0, 0.0, -1.0],
+            ),
+            Matrix::from(vec![1.0, 1.0]),
+        );
+
+        let x = lop
+            .solve_with(LOPOptions {
+                max_p1_iterations: 8,
+                max_p2_iterations: 8,
+                verbose: false,
+            })
+            .unwrap();
+
+        println!("{}", x);
     }
 }
