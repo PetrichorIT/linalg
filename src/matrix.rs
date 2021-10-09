@@ -1,3 +1,14 @@
+//!
+//! A module defining the core structures of [linalg](crate).
+//!
+//! # Matrices
+//!
+//! A [Matrix] is defined through a raw buffer and a [Matrix Layout](MatrixLayout)
+//! defining the cell interpretation of the buffer.
+//! Generic functions and mathematical operations are defined on the generic
+//! type a piori, more complex operations will be added in other modules.
+//!
+
 use std::{
     convert::TryFrom,
     fmt::Display,
