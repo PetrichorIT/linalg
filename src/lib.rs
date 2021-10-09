@@ -55,9 +55,9 @@ mod tests {
         let x = lop.solve_with(LOPOptions {
             max_p1_iterations: 2,
             max_p2_iterations: 2,
-            verbose: false,
+            verbose: true,
         });
 
-        println!("{:?}", x);
+        println!("{}", x.unwrap());
     }
 }

@@ -527,7 +527,18 @@ impl Default for LOPOptions {
 ///
 /// A step in the simplex algorithm saved.
 ///
-/// TODO
+/// # Example Output
+///
+/// ```txt
+/// N:2 |       x7       x8       x3       x4       x5 |       
+/// ----------------------------------------------------------------
+///  x6 |      -1       -1        1        1        1  |      2
+///  x1 |       1        1       -2       -1       -1  |      2
+///  x2 |       0        1       -2        0       -1  |      1
+/// (H) |      -1       -1        0        0        0  |      0
+/// (P) |       1       -2        2       -1        2  |     -1
+/// ```
+///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LOPIncrement<T> {
     /// The phase the increment was recorded (phase 1 - normilization / phase 2 - solving).
