@@ -703,15 +703,15 @@ mod tests {
     #[test]
     fn check_short_two_phase_success() {
         let lop = LOP::new(
-            Matrix::col(vec![1.0, -3.0, 2.0, 0.0, 0.0]),
+            Matrix::colvec(vec![1.0, -3.0, 2.0, 0.0, 0.0]),
             0.0,
-            Matrix::row(vec![1.0, 0.0, -1.0, 0.0, 0.0]),
-            Matrix::col(vec![4.0]),
+            Matrix::rowvec(vec![1.0, 0.0, -1.0, 0.0, 0.0]),
+            Matrix::colvec(vec![4.0]),
             Matrix::new(
                 (2, 5),
                 vec![1.0, -1.0, 0.0, -1.0, 0.0, 0.0, 1.0, -2.0, 0.0, -1.0],
             ),
-            Matrix::col(vec![1.0, 1.0]),
+            Matrix::colvec(vec![1.0, 1.0]),
         );
 
         let x: Result<LOPSolution<f64>, &'static str> = lop.solve_with(LOPOptions {
@@ -732,15 +732,15 @@ mod tests {
     #[test]
     fn check_failure_unbound() {
         let lop = LOP::new(
-            Matrix::col(vec![8.0, 8.0, -9.0, 0.0, 0.0]),
+            Matrix::colvec(vec![8.0, 8.0, -9.0, 0.0, 0.0]),
             0.0f64,
-            Matrix::row(vec![1.0, 1.0, 1.0, 0.0, 0.0]),
-            Matrix::col(vec![1.0]),
+            Matrix::rowvec(vec![1.0, 1.0, 1.0, 0.0, 0.0]),
+            Matrix::colvec(vec![1.0]),
             Matrix::new(
                 MatrixLayout::new(2, 5),
                 vec![2.0, 4.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0, 0.0, -1.0],
             ),
-            Matrix::col(vec![8.0, 2.0]),
+            Matrix::colvec(vec![8.0, 2.0]),
         );
 
         let x = lop.solve();
@@ -753,15 +753,15 @@ mod tests {
     #[test]
     fn check_verbose_succes_example() {
         let lop = LOP::new(
-            Matrix::col(vec![4.0, -2.0, -5.0, 0.0]),
+            Matrix::colvec(vec![4.0, -2.0, -5.0, 0.0]),
             0.0f64,
             Matrix::new(
                 MatrixLayout::new(2, 4),
                 vec![-5.0, 2.0, 9.0, 0.0, -2.0, 1.0, 4.0, 0.0],
             ),
-            Matrix::col(vec![2.0, 1.0]),
-            Matrix::row(vec![-13.0, 7.0, 27.0, -1.0]),
-            Matrix::col(vec![3.0]),
+            Matrix::colvec(vec![2.0, 1.0]),
+            Matrix::rowvec(vec![-13.0, 7.0, 27.0, -1.0]),
+            Matrix::colvec(vec![3.0]),
         );
 
         let mut options = LOPOptions::default();

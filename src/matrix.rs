@@ -218,6 +218,48 @@ impl<T> Matrix<T> {
 
 impl<T> Matrix<T> {
     ///
+    /// Creates a new matrix with a given layout over the given buffer.
+    ///  
+    /// # Panics
+    ///
+    /// This function panics should the layout not fit the buffer.
+    /// This can be archived should the layouts size match the buffers length.
+    ///
+    /// ```should_panic
+    /// use linalg::matrix::*;
+    ///
+    /// // Creates a 6 element buffer
+    /// // -> layouts (1, 6) (2, 3) (3, 2) (6, 1) are possible
+    /// let buffer = vec![1, 2, 3, 4, 5, 6];
+    ///
+    /// let matrix = Matrix::new((3, 3), buffer);
+    /// ```
+    ///
+    #[inline]
+    pub fn new<U>(layout: U, raw: Vec<T>) -> Self
+    where
+        U: Into<MatrixLayout>,
+    {
+        let layout = layout.into();
+        assert_eq!(layout.size(), raw.len());
+        Self { layout, raw }
+    }
+
+    /// Creates a row vector with the given buffer.
+    #[inline]
+    pub fn rowvec(raw: Vec<T>) -> Self {
+        let layout = MatrixLayout::new(1, raw.len());
+        Self { layout, raw }
+    }
+
+    /// Create a collum vector with the given buffer.
+    #[inline]
+    pub fn colvec(raw: Vec<T>) -> Self {
+        let layout = MatrixLayout::new(raw.len(), 1);
+        Self { layout, raw }
+    }
+
+    ///
     /// Creates a new matrix with an allocated but uninialized
     /// memory buffer.
     ///
@@ -235,45 +277,6 @@ impl<T> Matrix<T> {
         // outwardly unsafe shape, to create buffers and such.
         raw.set_len(layout.size());
 
-        Self { layout, raw }
-    }
-
-    ///
-    /// Creates a new matrix with a given layout over the given buffer.
-    /// This function panics should the layout not fit the buffer.
-    ///  
-    /// # Example
-    ///
-    /// ```should_panic
-    /// use linalg::matrix::*;
-    ///
-    /// // Creates a 6 element buffer
-    /// // -> layouts (1, 6) (2, 3) (3, 2) (6, 1) are possible
-    /// let buffer = vec![1, 2, 3, 4, 5, 6];
-    ///
-    /// let matrix = Matrix::new((3, 3), buffer);
-    /// ```
-    ///
-    pub fn new<U>(layout: U, raw: Vec<T>) -> Self
-    where
-        U: Into<MatrixLayout>,
-    {
-        let layout = layout.into();
-        assert_eq!(layout.size(), raw.len());
-        Self { layout, raw }
-    }
-
-    /// Creates a row vector with the given buffer.
-    #[inline]
-    pub fn row(raw: Vec<T>) -> Self {
-        let layout = MatrixLayout::new(1, raw.len());
-        Self { layout, raw }
-    }
-
-    /// Create a collum vector with the given buffer.
-    #[inline]
-    pub fn col(raw: Vec<T>) -> Self {
-        let layout = MatrixLayout::new(raw.len(), 1);
         Self { layout, raw }
     }
 }
@@ -869,7 +872,12 @@ where
     /// ```
     ///
     pub fn transpose(&mut self) {
-        *self = self.transposed()
+        if self.layout().is_colvec() || self.layout().is_rowvec() {
+            // For vectorized matrices transposition will not change the raw buffer
+            self.layout.transpose()
+        } else {
+            *self = self.transposed()
+        }
     }
 
     ///
