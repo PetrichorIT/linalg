@@ -1,3 +1,24 @@
+//!
+//! A module for solving linear optimization problems.
+//!
+//! A linear optimization problem in (semi-)normal form consists of a
+//! linear cost function f defined by the vector c and a constant offset l,
+//! and two sets of constraints.
+//! The border constraints are defined by the "a" martix and the "b" vector
+//! following the inqeuality Ax <= b.
+//! The equality constrains are defined by the "a_eq" matrix and the "b_eq" vector
+//! following the equality Ax = b
+//!
+//! # Solving a LOP
+//!
+//! When solving a given LOP a simplified simplex algorithm will be used.
+//! This may result in a solution of type [LOPSolution] consisting of a
+//! solution vector x, its allocated cost value, and processing increments if
+//! the solver was used in verbose mode.
+//! If no solution is found then the problem is either unbound, or iteration limits
+//! are exceeded.
+//!
+
 use std::{fmt::Display, mem::swap, ops::Neg};
 
 use crate::matrix::{Matrix, MatrixLayout};
