@@ -52,14 +52,12 @@ mod tests {
             Matrix::from(vec![1.0, 1.0]),
         );
 
-        let x = lop
-            .solve_with(LOPOptions {
-                max_p1_iterations: 8,
-                max_p2_iterations: 8,
-                verbose: false,
-            })
-            .unwrap();
+        let x = lop.solve_with(LOPOptions {
+            max_p1_iterations: 2,
+            max_p2_iterations: 2,
+            verbose: false,
+        });
 
-        println!("{}", x);
+        println!("{:?}", x);
     }
 }

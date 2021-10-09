@@ -217,8 +217,16 @@ impl<T> Matrix<T> {
 }
 
 impl<T> Matrix<T> {
+    ///
     /// Creates a new matrix with an allocated but uninialized
     /// memory buffer.
+    ///
+    /// # Safty
+    ///
+    /// Ensure that all cells of the allocated buffer (self.raw().len())
+    /// are either filled with valid instances of the given type,
+    /// or never used.
+    ///
     pub unsafe fn uninitalized(layout: MatrixLayout) -> Self {
         let mut raw = Vec::with_capacity(layout.size());
 
@@ -230,14 +238,43 @@ impl<T> Matrix<T> {
         Self { layout, raw }
     }
 
+    ///
+    /// Creates a new matrix with a given layout over the given buffer.
+    /// This function panics should the layout not fit the buffer.
+    ///  
+    /// # Example
+    ///
+    /// ```should_panic
+    /// use linalg::matrix::*;
+    ///
+    /// // Creates a 6 element buffer
+    /// // -> layouts (1, 6) (2, 3) (3, 2) (6, 1) are possible
+    /// let buffer = vec![1, 2, 3, 4, 5, 6];
+    ///
+    /// let matrix = Matrix::new((3, 3), buffer);
+    /// ```
+    ///
     pub fn new<U>(layout: U, raw: Vec<T>) -> Self
     where
         U: Into<MatrixLayout>,
     {
-        Self {
-            layout: layout.into(),
-            raw,
-        }
+        let layout = layout.into();
+        assert_eq!(layout.size(), raw.len());
+        Self { layout, raw }
+    }
+
+    /// Creates a row vector with the given buffer.
+    #[inline]
+    pub fn row(raw: Vec<T>) -> Self {
+        let layout = MatrixLayout::new(1, raw.len());
+        Self { layout, raw }
+    }
+
+    /// Create a collum vector with the given buffer.
+    #[inline]
+    pub fn col(raw: Vec<T>) -> Self {
+        let layout = MatrixLayout::new(raw.len(), 1);
+        Self { layout, raw }
     }
 }
 

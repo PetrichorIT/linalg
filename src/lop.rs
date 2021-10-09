@@ -16,18 +16,34 @@ pub type LOP<T> = LinearOpimizationProblem<T>;
 /// This structure also holds the function [LinearOpimizationProblem::solve] to
 /// solve the optimization problem an return the caclulated result.
 ///
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinearOpimizationProblem<T> {
+    /// The non-constant coefficiant vector of the cost function.
     pub c: Matrix<T>,
+    /// The constant offset coefficiant of the cost function.
     pub l: T,
+    /// The coefficant matrix of the border constraints.
     pub a: Matrix<T>,
+    /// The offset vector for the border constraints.
     pub b: Matrix<T>,
+    /// The coefficant matrix of the equality constrains.
     pub a_eq: Matrix<T>,
+    /// The offset vector of the equality constrains.
     pub b_eq: Matrix<T>,
 }
 
 impl<T> LinearOpimizationProblem<T> {
-    /// Creates a new linear optimization problem.
+    ///
+    /// Creates a new LOP using the given partial values.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic should the size of the c vector not equal the
+    /// collum dimension of the coefficient matrices, or should the row dimension of each
+    /// coefficent matrix not equal the size of its b vector.
+    /// Note that matrics of size 0, are exempted from rules defined by the c vector.
+    ///
+    #[inline]
     pub fn new(
         c: Matrix<T>,
         l: T,
@@ -36,6 +52,11 @@ impl<T> LinearOpimizationProblem<T> {
         a_eq: Matrix<T>,
         b_eq: Matrix<T>,
     ) -> Self {
+        assert!(c.size() == a.layout().cols() || a.size() == 0);
+        assert!(c.size() == a_eq.layout().cols() || a_eq.size() == 0);
+        assert_eq!(a.layout().rows(), b.size());
+        assert_eq!(a_eq.layout().rows(), b_eq.size());
+
         Self {
             c,
             l,
@@ -45,12 +66,38 @@ impl<T> LinearOpimizationProblem<T> {
             b_eq,
         }
     }
+
+    ///
+    /// Creates a new LOP using the given partial values converting
+    /// them to matrices or vectors (subcase of matrices) using the
+    /// best implementation of [Into].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic should either a conversion fails
+    /// or any of the constrains layed out in [LinearOpimizationProblem::new()] is not given.
+    ///
+    #[inline]
+    pub fn build<VecType, MatType>(
+        c: VecType,
+        l: T,
+        a: MatType,
+        b: VecType,
+        a_eq: MatType,
+        b_eq: VecType,
+    ) -> Self
+    where
+        VecType: Into<Matrix<T>>,
+        MatType: Into<Matrix<T>>,
+    {
+        Self::new(c.into(), l, a.into(), b.into(), a_eq.into(), b_eq.into())
+    }
 }
 
 impl LinearOpimizationProblem<f64> {
     ///
-    /// Tries to solve the linear optimization problem using the provided
-    /// options and observers.
+    /// Tries to solve the linear optimization problem using the default
+    /// solving configuration.
     ///
     pub fn solve(&self) -> Result<LOPSolution<f64>, &'static str> {
         self.solve_with(LOPOptions::default())
@@ -60,8 +107,20 @@ impl LinearOpimizationProblem<f64> {
     /// Tries to solve the linear optimization problem using the provided
     /// options and observers.
     ///
+    /// This solving algorithm will terminated after at
+    /// most [LOPOptions.max_p1_iterations] + [LOPOptions.max_p2_iterations].
+    /// Possible errors include max. iteration count exeeded, or and unbound problem (type 1 / 2).
+    ///
+    /// # Panics
+    ///
+    /// This function will panic should any of the constrains layed out in
+    /// [LinearOpimizationProblem::new()] be violated, or should the c and b vector
+    /// sieze to be collumvectors.
+    ///
     pub fn solve_with(&self, options: LOPOptions) -> Result<LOPSolution<f64>, &'static str> {
         assert!(self.c.layout().is_colvec());
+        assert!(self.b.layout().is_colvec());
+        assert!(self.b_eq.layout().is_colvec());
         assert!(self.a.layout().rows() == self.b.layout().rows());
         assert!(self.a.layout().cols() == self.c.size() || self.a.layout().cols() == 0);
         assert!(self.a_eq.layout().rows() == self.b_eq.layout().rows());
@@ -194,7 +253,7 @@ impl LinearOpimizationProblem<f64> {
 
             // Got Pivot, Do Iteration
 
-            if p1_itr > options.max_p1_iterations {
+            if p1_itr >= options.max_p1_iterations {
                 return Err(&"Exceeded maximum phase one iteration count");
             }
             p1_itr += 1;
@@ -334,7 +393,7 @@ impl LinearOpimizationProblem<f64> {
             }
             let pv_row = pv_row.unwrap();
 
-            if p2_itr > options.max_p2_iterations {
+            if p2_itr >= options.max_p2_iterations {
                 return Err(&"Exceeded maximum phase two iteration count");
             }
             p2_itr += 1;
@@ -583,5 +642,118 @@ where
         }
 
         write!(f, "\n {} ==> {}", self.x, self.fval)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{lop::*, matrix::*};
+
+    #[test]
+    fn test_builder() {
+        let explicit: LOP<f64> = LOP::new(
+            Matrix::from(vec![1.0, -3.0, 2.0, 0.0, 0.0]),
+            0.0,
+            Matrix::new((1, 5), vec![1.0, 0.0, -1.0, 0.0, 0.0]),
+            Matrix::from(vec![4.0]),
+            Matrix::new(
+                (2, 5),
+                vec![1.0, -1.0, 0.0, -1.0, 0.0, 0.0, 1.0, -2.0, 0.0, -1.0],
+            ),
+            Matrix::from(vec![1.0, 1.0]),
+        );
+
+        let implict: LOP<f64> = LOP::build(
+            vec![1.0, -3.0, 2.0, 0.0, 0.0],
+            0.0,
+            Matrix::new((1, 5), vec![1.0, 0.0, -1.0, 0.0, 0.0]),
+            vec![4.0],
+            Matrix::new(
+                (2, 5),
+                vec![1.0, -1.0, 0.0, -1.0, 0.0, 0.0, 1.0, -2.0, 0.0, -1.0],
+            ),
+            vec![1.0, 1.0],
+        );
+
+        assert_eq!(explicit, implict);
+    }
+
+    #[test]
+    fn check_short_two_phase_success() {
+        let lop = LOP::new(
+            Matrix::col(vec![1.0, -3.0, 2.0, 0.0, 0.0]),
+            0.0,
+            Matrix::row(vec![1.0, 0.0, -1.0, 0.0, 0.0]),
+            Matrix::col(vec![4.0]),
+            Matrix::new(
+                (2, 5),
+                vec![1.0, -1.0, 0.0, -1.0, 0.0, 0.0, 1.0, -2.0, 0.0, -1.0],
+            ),
+            Matrix::col(vec![1.0, 1.0]),
+        );
+
+        let x: Result<LOPSolution<f64>, &'static str> = lop.solve_with(LOPOptions {
+            max_p1_iterations: 2,
+            max_p2_iterations: 2,
+            verbose: false,
+        });
+
+        assert!(x.is_ok());
+        let x = x.unwrap();
+
+        assert_eq!(x.fval, -5.0);
+        assert_eq!(*x.x.layout(), MatrixLayout::new(5, 1));
+        assert_eq!(*x.x.raw(), vec![6.0, 5.0, 2.0, 0.0, 0.0]);
+        assert_eq!(x.increments, vec![]);
+    }
+
+    #[test]
+    fn check_failure_unbound() {
+        let lop = LOP::new(
+            Matrix::col(vec![8.0, 8.0, -9.0, 0.0, 0.0]),
+            0.0f64,
+            Matrix::row(vec![1.0, 1.0, 1.0, 0.0, 0.0]),
+            Matrix::col(vec![1.0]),
+            Matrix::new(
+                MatrixLayout::new(2, 5),
+                vec![2.0, 4.0, 1.0, -1.0, 0.0, 1.0, -1.0, -1.0, 0.0, -1.0],
+            ),
+            Matrix::col(vec![8.0, 2.0]),
+        );
+
+        let x = lop.solve();
+        assert!(x.is_err());
+
+        let err = x.unwrap_err();
+        assert_eq!(err, "Problem is unbound (1)")
+    }
+
+    #[test]
+    fn check_verbose_succes_example() {
+        let lop = LOP::new(
+            Matrix::col(vec![4.0, -2.0, -5.0, 0.0]),
+            0.0f64,
+            Matrix::new(
+                MatrixLayout::new(2, 4),
+                vec![-5.0, 2.0, 9.0, 0.0, -2.0, 1.0, 4.0, 0.0],
+            ),
+            Matrix::col(vec![2.0, 1.0]),
+            Matrix::row(vec![-13.0, 7.0, 27.0, -1.0]),
+            Matrix::col(vec![3.0]),
+        );
+
+        let mut options = LOPOptions::default();
+        options.verbose = true;
+
+        let x = lop.solve_with(options);
+        assert!(x.is_ok());
+
+        let x = x.unwrap();
+        assert_eq!(x.fval, -2.0);
+        assert_eq!(*x.x.layout(), MatrixLayout::new(4, 1));
+        assert_eq!(*x.x.raw(), vec![0.0, 1.0, 0.0, 4.0]);
+
+        assert!(x.increments.len() == 5);
     }
 }
