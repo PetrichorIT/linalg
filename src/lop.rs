@@ -21,6 +21,8 @@
 
 use std::{fmt::Display, mem::swap, ops::Neg};
 
+use num_traits::Num;
+
 use crate::core::{Matrix, MatrixLayout};
 
 // min c^T*x + l with a_eq*x=b_eq and a*x <= b
@@ -38,7 +40,7 @@ pub type LOP<T> = LinearOpimizationProblem<T>;
 /// solve the optimization problem an return the caclulated result.
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LinearOpimizationProblem<T> {
+pub struct LinearOpimizationProblem<T: Num> {
     /// The non-constant coefficiant vector of the cost function.
     pub c: Matrix<T>,
     /// The constant offset coefficiant of the cost function.
@@ -53,7 +55,7 @@ pub struct LinearOpimizationProblem<T> {
     pub b_eq: Matrix<T>,
 }
 
-impl<T> LinearOpimizationProblem<T> {
+impl<T: Num> LinearOpimizationProblem<T> {
     ///
     /// Creates a new LOP using the given partial values.
     ///
@@ -540,7 +542,7 @@ impl Default for LOPOptions {
 /// ```
 ///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LOPIncrement<T> {
+pub struct LOPIncrement<T: Num> {
     /// The phase the increment was recorded (phase 1 - normilization / phase 2 - solving).
     pub phase: usize,
     /// The exlicit number of the iteration (should be implicitly known from vector position).
@@ -557,7 +559,7 @@ pub struct LOPIncrement<T> {
     pub matrix: Matrix<T>,
 }
 
-impl<T> Display for LOPIncrement<T>
+impl<T: Num> Display for LOPIncrement<T>
 where
     T: Display,
 {
@@ -649,7 +651,7 @@ where
 ///
 /// TODO
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LOPSolution<T> {
+pub struct LOPSolution<T: Num> {
     /// The optimal vector to minimize the linear function.
     pub x: Matrix<T>,
     /// The resulting global minimum under the given side conditions.
@@ -658,7 +660,7 @@ pub struct LOPSolution<T> {
     pub increments: Vec<LOPIncrement<T>>,
 }
 
-impl<T> Display for LOPSolution<T>
+impl<T: Num> Display for LOPSolution<T>
 where
     T: Display,
 {

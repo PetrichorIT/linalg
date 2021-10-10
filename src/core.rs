@@ -20,7 +20,7 @@ use std::{
     },
 };
 
-use crate::util::Zeroed;
+use num_traits::Num;
 
 ///
 /// A description of a 2d-matrix dimensions.
@@ -192,6 +192,8 @@ impl From<(usize, usize)> for MatrixLayout {
 /// This struct contains a layout element of type [MatrixLayout] and
 /// a raw buffer to store matrix cells. The size of the raw buffer thereby is
 /// defined by the layouts [MatrixLayout::size()] function.
+/// Note that the [Matrix] has technicly no generic constraint but all functions are
+/// only implemented over the [Num] trait.
 ///
 /// # Example
 ///
@@ -306,7 +308,7 @@ impl<T> Matrix<T> {
     }
 }
 
-impl<T> Matrix<T>
+impl<T: Num> Matrix<T>
 where
     T: Copy,
 {
@@ -371,12 +373,7 @@ where
         }
         matrix
     }
-}
 
-impl<T> Matrix<T>
-where
-    T: Zeroed,
-{
     ///
     /// Creates a new matrix with the given layout filling all cells
     /// with the given filler element.
@@ -418,32 +415,6 @@ where
         let mut matrix = Matrix::zeroed(layout);
         for i in 0..vec.len() {
             matrix[(i, i)] = vec[i];
-        }
-
-        matrix
-    }
-
-    ///
-    /// Creates a new eye-matrix with the given eye element
-    /// filling the remaing cells with the filler element.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use linalg::core::*;
-    ///
-    /// let eye = Matrix::eye(3, 1);
-    /// assert!(eye.layout().is_square());
-    /// assert!(eye.layout().rows() == 3);
-    /// assert!(eye[(1, 1)] == 1);
-    /// ```
-    ///
-    pub fn eye(size: usize, eye: T) -> Self {
-        let layout = MatrixLayout::square(size);
-
-        let mut matrix = Matrix::zeroed(layout);
-        for i in 0..size {
-            matrix[(i, i)] = eye;
         }
 
         matrix
@@ -502,6 +473,32 @@ where
             *self = matrix;
         }
     }
+
+    ///
+    /// Creates a new eye-matrix with the given eye element
+    /// filling the remaing cells with the filler element.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg::core::*;
+    ///
+    /// let eye = Matrix::<usize>::eye(3);
+    /// assert!(eye.layout().is_square());
+    /// assert!(eye.layout().rows() == 3);
+    /// assert!(eye[(1, 1)] == 1);
+    /// ```
+    ///
+    pub fn eye(size: usize) -> Self {
+        let layout = MatrixLayout::square(size);
+
+        let mut matrix = Matrix::zeroed(layout);
+        for i in 0..size {
+            matrix[(i, i)] = T::one();
+        }
+
+        matrix
+    }
 }
 
 ///
@@ -515,7 +512,7 @@ where
 /// The Errors are represented as static strings (&'static str).
 ///
 
-impl<T> TryFrom<Vec<Vec<T>>> for Matrix<T> {
+impl<T: Num> TryFrom<Vec<Vec<T>>> for Matrix<T> {
     type Error = &'static str;
 
     fn try_from(structured: Vec<Vec<T>>) -> Result<Self, &'static str> {
@@ -534,7 +531,7 @@ impl<T> TryFrom<Vec<Vec<T>>> for Matrix<T> {
 /// given vector as elements.
 ///
 
-impl<T> From<Vec<T>> for Matrix<T> {
+impl<T: Num> From<Vec<T>> for Matrix<T> {
     fn from(raw: Vec<T>) -> Self {
         Matrix {
             layout: MatrixLayout {
@@ -550,7 +547,7 @@ impl<T> From<Vec<T>> for Matrix<T> {
 /// Matrix: Custom Trait Implementations
 ///
 
-impl<T> Default for Matrix<T>
+impl<T: Num> Default for Matrix<T>
 where
     T: Default,
 {
@@ -562,7 +559,7 @@ where
     }
 }
 
-impl<T> IntoIterator for Matrix<T> {
+impl<T: Num> IntoIterator for Matrix<T> {
     type Item = T;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -571,7 +568,7 @@ impl<T> IntoIterator for Matrix<T> {
     }
 }
 
-impl<T> Deref for Matrix<T> {
+impl<T: Num> Deref for Matrix<T> {
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -579,7 +576,7 @@ impl<T> Deref for Matrix<T> {
     }
 }
 
-impl<T> Index<usize> for Matrix<T> {
+impl<T: Num> Index<usize> for Matrix<T> {
     type Output = T;
 
     #[inline(always)]
@@ -588,20 +585,20 @@ impl<T> Index<usize> for Matrix<T> {
     }
 }
 
-impl<T> IndexMut<usize> for Matrix<T> {
+impl<T: Num> IndexMut<usize> for Matrix<T> {
     #[inline(always)]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.raw[index]
     }
 }
 
-impl<T> DerefMut for Matrix<T> {
+impl<T: Num> DerefMut for Matrix<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.raw.deref_mut()
     }
 }
 
-impl<T> Index<(usize, usize)> for Matrix<T> {
+impl<T: Num> Index<(usize, usize)> for Matrix<T> {
     type Output = T;
 
     #[inline(always)]
@@ -610,14 +607,14 @@ impl<T> Index<(usize, usize)> for Matrix<T> {
     }
 }
 
-impl<T> IndexMut<(usize, usize)> for Matrix<T> {
+impl<T: Num> IndexMut<(usize, usize)> for Matrix<T> {
     #[inline(always)]
     fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
         &mut self.raw[self.layout.index(index)]
     }
 }
 
-impl<T> PartialEq for Matrix<T>
+impl<T: Num> PartialEq for Matrix<T>
 where
     T: PartialEq,
 {
@@ -626,9 +623,9 @@ where
     }
 }
 
-impl<T> Eq for Matrix<T> where T: Eq {}
+impl<T: Num> Eq for Matrix<T> where T: Eq {}
 
-impl<T> Hash for Matrix<T>
+impl<T: Num> Hash for Matrix<T>
 where
     T: Hash,
 {
@@ -638,7 +635,7 @@ where
     }
 }
 
-impl<T> PartialOrd for Matrix<T>
+impl<T: Num> PartialOrd for Matrix<T>
 where
     T: PartialOrd,
 {
@@ -685,11 +682,11 @@ where
 /// Matrix: Addition
 ///
 
-impl<T> Add for Matrix<T>
+impl<T: Num> Add for Matrix<T>
 where
     T: Add + Copy,
 {
-    type Output = Matrix<T::Output>;
+    type Output = Matrix<<T as Add>::Output>;
 
     fn add(self, rhs: Self) -> Self::Output {
         assert!(self.layout == rhs.layout);
@@ -706,7 +703,7 @@ where
     }
 }
 
-impl<T> AddAssign for Matrix<T>
+impl<T: Num> AddAssign for Matrix<T>
 where
     T: AddAssign + Copy,
 {
@@ -722,11 +719,11 @@ where
 /// Matrix: Subtraction
 ///
 
-impl<T> Sub for Matrix<T>
+impl<T: Num> Sub for Matrix<T>
 where
     T: Sub + Copy,
 {
-    type Output = Matrix<T::Output>;
+    type Output = Matrix<<T as Sub>::Output>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         assert!(self.layout == rhs.layout);
@@ -743,7 +740,7 @@ where
     }
 }
 
-impl<T> SubAssign for Matrix<T>
+impl<T: Num> SubAssign for Matrix<T>
 where
     T: SubAssign + Copy,
 {
@@ -759,11 +756,11 @@ where
 /// Matrix: Bitwise AND
 ///
 
-impl<T> BitAnd for Matrix<T>
+impl<T: Num> BitAnd for Matrix<T>
 where
     T: BitAnd + Copy,
 {
-    type Output = Matrix<T::Output>;
+    type Output = Matrix<<T as BitAnd>::Output>;
 
     fn bitand(self, rhs: Self) -> Self::Output {
         assert!(self.layout == rhs.layout);
@@ -780,7 +777,7 @@ where
     }
 }
 
-impl<T> BitAndAssign for Matrix<T>
+impl<T: Num> BitAndAssign for Matrix<T>
 where
     T: BitAndAssign + Copy,
 {
@@ -796,11 +793,11 @@ where
 /// Matrix: Bitwise OR
 ///
 
-impl<T> BitOr for Matrix<T>
+impl<T: Num> BitOr for Matrix<T>
 where
     T: BitOr + Copy,
 {
-    type Output = Matrix<T::Output>;
+    type Output = Matrix<<T as BitOr>::Output>;
 
     fn bitor(self, rhs: Self) -> Self::Output {
         assert!(self.layout == rhs.layout);
@@ -817,7 +814,7 @@ where
     }
 }
 
-impl<T> BitOrAssign for Matrix<T>
+impl<T: Num> BitOrAssign for Matrix<T>
 where
     T: BitOrAssign + Copy,
 {
@@ -833,11 +830,11 @@ where
 /// Matrix: Bitwise XOR
 ///
 
-impl<T> BitXor for Matrix<T>
+impl<T: Num> BitXor for Matrix<T>
 where
     T: BitXor + Copy,
 {
-    type Output = Matrix<T::Output>;
+    type Output = Matrix<<T as BitXor>::Output>;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
         assert!(self.layout == rhs.layout);
@@ -854,7 +851,7 @@ where
     }
 }
 
-impl<T> BitXorAssign for Matrix<T>
+impl<T: Num> BitXorAssign for Matrix<T>
 where
     T: BitXorAssign + Copy,
 {
@@ -870,7 +867,7 @@ where
 /// Matrix: Multiplication
 ///
 
-impl<T> Mul for Matrix<T>
+impl<T: Num> Mul for Matrix<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy + Default,
 {
@@ -902,7 +899,7 @@ where
     }
 }
 
-impl<T> MulAssign for Matrix<T>
+impl<T: Num> MulAssign for Matrix<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy + Default,
 {
@@ -936,7 +933,7 @@ where
 /// Matrix: Misc Traits
 ///
 
-impl<T> Display for Matrix<T>
+impl<T: Num> Display for Matrix<T>
 where
     T: Display,
 {
@@ -969,7 +966,7 @@ where
 /// which will be implemented in a specific way to improve computational efficenicy.
 ///
 
-impl<T> Matrix<T>
+impl<T: Num> Matrix<T>
 where
     T: Add<Output = T> + Copy + Default,
 {
@@ -1001,7 +998,7 @@ where
     }
 }
 
-impl<T> Matrix<T>
+impl<T: Num> Matrix<T>
 where
     T: Copy,
 {
@@ -1069,7 +1066,7 @@ where
     }
 }
 
-impl<T> Matrix<T>
+impl<T: Num> Matrix<T>
 where
     T: Mul + Copy,
 {
@@ -1089,7 +1086,7 @@ where
     /// assert!(2 * matrix[(2, 0)] == double[(2, 0)]);
     /// ```
     ///
-    pub fn scalar(&self, scalar: T) -> Matrix<T::Output> {
+    pub fn scalar(&self, scalar: T) -> Matrix<<T as Mul>::Output> {
         // SAFTY:
         // Matix is identical in layout, so all cells will be filled,
         // cause iteration over raw values
@@ -1103,7 +1100,7 @@ where
     }
 }
 
-impl<T> Matrix<T>
+impl<T: Num> Matrix<T>
 where
     T: Mul<Output = T> + Copy,
 {
@@ -1131,7 +1128,7 @@ where
     }
 }
 
-impl<T> Matrix<T>
+impl<T: Num> Matrix<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy + Default,
 {
@@ -1161,11 +1158,11 @@ where
     }
 }
 
-impl<T> Neg for Matrix<T>
+impl<T: Num> Neg for Matrix<T>
 where
     T: Neg + Copy,
 {
-    type Output = Matrix<T::Output>;
+    type Output = Matrix<<T as Neg>::Output>;
 
     fn neg(self) -> Self::Output {
         // SAFTY:

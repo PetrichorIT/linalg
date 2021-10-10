@@ -1,5 +1,4 @@
 mod marco;
-mod util;
 
 pub mod core;
 pub mod lop;

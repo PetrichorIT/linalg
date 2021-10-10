@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use num_traits::Num;
+
 use crate::core::{Matrix, MatrixLayout};
 
 ///
@@ -10,7 +12,7 @@ use crate::core::{Matrix, MatrixLayout};
 /// L*R = P*A
 ///
 #[derive(Debug, Clone)]
-pub struct LrDecomposition<T> {
+pub struct LrDecomposition<T: Num> {
     /// A lower triangular matrix enocding the gaussian steps.
     pub l: Matrix<T>,
 
@@ -34,8 +36,8 @@ impl LrDecomposition<f64> {
     pub fn create(a: Matrix<f64>) -> Option<Self> {
         assert!(a.layout().is_square());
 
-        let mut p = Matrix::eye(a.layout().rows(), 1.0);
-        let mut l = Matrix::eye(a.layout().rows(), 1.0);
+        let mut p = Matrix::eye(a.layout().rows());
+        let mut l = Matrix::eye(a.layout().rows());
 
         let mut r = a;
 
@@ -123,7 +125,7 @@ impl LrDecomposition<f64> {
     }
 }
 
-impl<T> Display for LrDecomposition<T>
+impl<T: Num> Display for LrDecomposition<T>
 where
     T: Display,
 {
@@ -136,7 +138,7 @@ where
 /// An algebraic QR-Decomposition of an abitraty matrix A.
 ///
 #[derive(Debug, Clone)]
-pub struct QrDecomposition<T> {
+pub struct QrDecomposition<T: Num> {
     pub q: Matrix<T>,
     pub r: Matrix<T>,
 }
@@ -144,7 +146,7 @@ pub struct QrDecomposition<T> {
 impl QrDecomposition<f64> {
     pub fn create(a: Matrix<f64>) -> Self {
         let mut r = a;
-        let mut q = Matrix::eye(r.layout().rows(), 1.0);
+        let mut q = Matrix::eye(r.layout().rows());
 
         for c in 0..(r.layout().cols() - 1) {
             let mut v = Matrix::fill(MatrixLayout::new(r.layout().rows(), 1), 0.0);
@@ -165,7 +167,7 @@ impl QrDecomposition<f64> {
             let mut h = v.clone() * v.transposed();
             h.scale(2.0);
 
-            let qi = Matrix::eye(r.layout().rows(), 1.0) - h;
+            let qi = Matrix::eye(r.layout().rows()) - h;
 
             r = Matrix::mmul(&qi, r);
             q = Matrix::mmul(&qi.transposed(), q);
@@ -208,7 +210,7 @@ impl QrDecomposition<f64> {
     }
 }
 
-impl<T> Display for QrDecomposition<T>
+impl<T: Num> Display for QrDecomposition<T>
 where
     T: Display,
 {
