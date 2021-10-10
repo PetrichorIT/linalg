@@ -1,19 +1,27 @@
+mod marco;
+mod util;
+
+pub mod core;
 pub mod lop;
 pub mod lse;
-pub mod matrix;
 
 #[cfg(test)]
 mod tests {
 
+    use crate::core::*;
     use crate::lop::LOPOptions;
     use crate::lop::LOP;
     use crate::lse::*;
-    use crate::matrix::*;
+    use crate::mat;
     use std::convert::TryFrom;
 
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
+
+        let v = mat![1, 2, 3; 1, 2, 3;];
+
+        println!("{:?}", v)
     }
 
     #[test]

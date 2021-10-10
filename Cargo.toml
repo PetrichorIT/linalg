@@ -11,3 +11,4 @@ name = "linalg"
 path = "src/lib.rs"
 
 [dependencies]
+num-complex = "0.4"

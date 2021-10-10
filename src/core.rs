@@ -15,10 +15,12 @@ use std::{
     hash::Hash,
     mem::swap,
     ops::{
-        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Index,
-        IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
+        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref,
+        DerefMut, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
     },
 };
+
+use crate::util::Zeroed;
 
 ///
 /// A description of a 2d-matrix dimensions.
@@ -30,7 +32,7 @@ use std::{
 /// # Example
 ///
 /// ```
-/// use linalg::matrix::*;
+/// use linalg::core::*;
 ///
 /// let layout = MatrixLayout::new(2, 3);
 /// let matrix = Matrix::fill(layout, 0usize);
@@ -46,13 +48,13 @@ pub struct MatrixLayout {
 
 impl MatrixLayout {
     /// The number of rows in the matrix.
-    #[inline]
+    #[inline(always)]
     pub fn rows(&self) -> usize {
         self.rows
     }
 
     /// The number of collums in the matrix.
-    #[inline]
+    #[inline(always)]
     pub fn cols(&self) -> usize {
         self.cols
     }
@@ -90,7 +92,7 @@ impl MatrixLayout {
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
     /// let layout = MatrixLayout::new(2, 3);
     /// assert!(layout.index((1, 1)) == 4);
@@ -131,7 +133,7 @@ impl MatrixLayout {
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
     /// let data = vec![
     ///     vec![1, 2, 3],
@@ -194,7 +196,7 @@ impl From<(usize, usize)> for MatrixLayout {
 /// # Example
 ///
 /// ```
-/// use linalg::matrix::*;
+/// use linalg::core::*;
 ///
 /// let matrix: Matrix<usize> = Matrix::fill(MatrixLayout::new(2, 3), 0);
 /// assert!(matrix.size() == 2*3);
@@ -237,7 +239,7 @@ impl<T> Matrix<T> {
     /// This can be archived should the layouts size match the buffers length.
     ///
     /// ```should_panic
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
     /// // Creates a 6 element buffer
     /// // -> layouts (1, 6) (2, 3) (3, 2) (6, 1) are possible
@@ -290,6 +292,18 @@ impl<T> Matrix<T> {
 
         Self { layout, raw }
     }
+
+    ///
+    /// Resets all allocated memory to zero bytes.
+    ///
+    /// # Safty
+    ///
+    /// This should only be done if zero-memory produces valid instances of type T
+    /// or matrix will be reinitalized fully afterwards.
+    ///
+    pub unsafe fn memreset(&mut self) {
+        std::ptr::write_bytes(self.raw.as_mut_ptr(), 0, self.raw.len())
+    }
 }
 
 impl<T> Matrix<T>
@@ -297,17 +311,53 @@ where
     T: Copy,
 {
     ///
+    /// Creates a new matrix copying values from the given
+    /// slice into a new buffer, using the given layout.
+    ///
+    pub fn from_slice<U>(layout: U, slice: &[T]) -> Self
+    where
+        U: Into<MatrixLayout>,
+    {
+        let layout = layout.into();
+        assert_eq!(layout.size(), slice.len());
+        Self {
+            layout,
+            raw: slice.to_vec(),
+        }
+    }
+
+    ///
+    /// Creates a new matrix copying values from the given slices in order
+    /// into a new buffer, using the given layout.
+    ///
+    pub fn from_slices<U>(layout: U, slices: Vec<&[T]>) -> Self
+    where
+        U: Into<MatrixLayout>,
+    {
+        let layout = layout.into();
+        let mut buffer = Vec::with_capacity(layout.size());
+        for slice in slices {
+            buffer.extend_from_slice(slice);
+        }
+        assert_eq!(layout.size(), buffer.len());
+        Self {
+            layout,
+            raw: buffer,
+        }
+    }
+
+    ///
     /// Creates a new matrix with the given layout filling all cells
     /// with the given filler element.
     ///
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
-    /// let matrix = Matrix::fill(MatrixLayout::new(2, 3), 0usize);
-    /// assert!(matrix[(0, 0)] == 0usize);
-    /// assert!(matrix[(1, 2)] == 0usize);
+    /// let matrix = Matrix::fill(MatrixLayout::new(2, 3), 1usize);
+    /// assert!(matrix[(0, 0)] == 1usize);
+    /// assert!(matrix[(1, 2)] == 1usize);
     /// ```
     ///
     pub fn fill(layout: MatrixLayout, filler: T) -> Self {
@@ -321,6 +371,30 @@ where
         }
         matrix
     }
+}
+
+impl<T> Matrix<T>
+where
+    T: Zeroed,
+{
+    ///
+    /// Creates a new matrix with the given layout filling all cells
+    /// with the given filler element.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg::core::*;
+    ///
+    /// let matrix = Matrix::fill(MatrixLayout::new(2, 3), 0usize);
+    /// assert!(matrix[(0, 0)] == 0usize);
+    /// assert!(matrix[(1, 2)] == 0usize);
+    /// ```
+    ///
+    #[inline]
+    pub fn zeroed(layout: MatrixLayout) -> Self {
+        Self::fill(layout, T::zero())
+    }
 
     ///
     /// Create a new diagonal matrix using the given vector, filling all
@@ -329,19 +403,19 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
-    /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
+    /// let matrix = Matrix::diag(vec![1, 2, 3]);
     /// assert!(matrix.layout().is_square());
     /// assert!(matrix.layout().rows() == 3);
     /// assert!(matrix[(0, 0)] == 1);
     /// assert!(matrix[(1, 1)] == 2);
     /// ```
     ///
-    pub fn diag(vec: Vec<T>, filler: T) -> Self {
+    pub fn diag(vec: Vec<T>) -> Self {
         let layout = MatrixLayout::square(vec.len());
 
-        let mut matrix = Matrix::fill(layout, filler);
+        let mut matrix = Matrix::zeroed(layout);
         for i in 0..vec.len() {
             matrix[(i, i)] = vec[i];
         }
@@ -356,23 +430,77 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
-    /// let eye = Matrix::eye(3, 1, 0usize);
+    /// let eye = Matrix::eye(3, 1);
     /// assert!(eye.layout().is_square());
     /// assert!(eye.layout().rows() == 3);
     /// assert!(eye[(1, 1)] == 1);
     /// ```
     ///
-    pub fn eye(size: usize, eye: T, filler: T) -> Self {
+    pub fn eye(size: usize, eye: T) -> Self {
         let layout = MatrixLayout::square(size);
 
-        let mut matrix = Matrix::fill(layout, filler);
+        let mut matrix = Matrix::zeroed(layout);
         for i in 0..size {
             matrix[(i, i)] = eye;
         }
 
         matrix
+    }
+
+    ///
+    /// Resizes the matrix according to the new layout given.
+    /// Note that this operation happens in-place should the number of collums
+    /// not change, or out-of-place should they change.
+    ///
+    /// The new cells in the new matrix will be filled with zero elemtents.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg::core::{Matrix, MatrixLayout};
+    /// use linalg::matrix;
+    ///
+    /// let mut matrix = matrix![
+    ///     1, 2;
+    ///     3, 4;
+    /// ];
+    /// matrix.resize((3, 3));
+    ///
+    /// assert_eq!(*matrix.layout(), MatrixLayout::new(3, 3));
+    /// assert_eq!(matrix[(0, 0)], 1);
+    /// assert_eq!(matrix[(1, 1)], 4);
+    /// assert_eq!(matrix[(2, 2)], 0usize);
+    /// ```
+    ///
+    pub fn resize<U>(&mut self, new_layout: U)
+    where
+        U: Into<MatrixLayout>,
+    {
+        let new_layout = new_layout.into();
+        let rows = new_layout.rows();
+        let cols = new_layout.cols();
+
+        if self.layout.cols == cols {
+            if self.layout.rows > rows {
+                self.raw.truncate(rows * cols);
+            } else {
+                self.raw
+                    .extend(vec![T::zero(); cols * (rows - self.layout.rows)]);
+            }
+            self.layout.rows = rows;
+        } else {
+            let mut matrix = Self::zeroed(new_layout);
+            let rows = self.layout.rows.min(rows);
+            let columns = self.layout.cols.min(cols);
+            for j in 0..columns {
+                for i in 0..rows {
+                    matrix[(i, j)] = self[(i, j)];
+                }
+            }
+            *self = matrix;
+        }
     }
 }
 
@@ -443,6 +571,14 @@ impl<T> IntoIterator for Matrix<T> {
     }
 }
 
+impl<T> Deref for Matrix<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        self.raw.deref()
+    }
+}
+
 impl<T> Index<usize> for Matrix<T> {
     type Output = T;
 
@@ -456,6 +592,12 @@ impl<T> IndexMut<usize> for Matrix<T> {
     #[inline(always)]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.raw[index]
+    }
+}
+
+impl<T> DerefMut for Matrix<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.raw.deref_mut()
     }
 }
 
@@ -842,9 +984,9 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
-    /// let diag = Matrix::diag(vec![1, 2, 3], 42usize);
+    /// let diag = Matrix::diag(vec![1, 2, 3]);
     /// assert!(*diag.layout() == MatrixLayout::new(3, 3));
     /// assert!(diag.trace() == 6);
     /// ```
@@ -869,7 +1011,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     /// use std::convert::TryFrom;
     ///
     /// let mut matrix = Matrix::<usize>::try_from(vec![
@@ -897,7 +1039,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     /// use std::convert::TryFrom;
     ///
     /// let matrix = Matrix::<usize>::try_from(vec![
@@ -938,9 +1080,9 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
-    /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
+    /// let matrix = Matrix::diag(vec![1, 2, 3]);
     /// let double = matrix.scalar(2);
     /// assert!(matrix.layout() == double.layout());
     /// assert!(2 * matrix[(0, 0)] == double[(0, 0)]);
@@ -972,9 +1114,9 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::matrix::*;
+    /// use linalg::core::*;
     ///
-    /// let matrix = Matrix::diag(vec![1, 2, 3], 0usize);
+    /// let matrix = Matrix::diag(vec![1, 2, 3]);
     /// let mut double = matrix.clone();
     /// double.scale(2);
     /// assert!(matrix.layout() == double.layout());

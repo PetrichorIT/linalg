@@ -21,7 +21,7 @@
 
 use std::{fmt::Display, mem::swap, ops::Neg};
 
-use crate::matrix::{Matrix, MatrixLayout};
+use crate::core::{Matrix, MatrixLayout};
 
 // min c^T*x + l with a_eq*x=b_eq and a*x <= b
 
@@ -491,7 +491,7 @@ impl LinearOpimizationProblem<f64> {
 /// # Example
 ///
 /// ```no_run
-/// use linalg::{lop::*, matrix::*};
+/// use linalg::{lop::*, core::*};
 ///
 /// # fn get_some_lop() -> LOP<f64> { todo!() }
 /// let lop = get_some_lop();
@@ -680,7 +680,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{lop::*, matrix::*};
+    use crate::{core::*, lop::*};
 
     #[test]
     fn test_builder() {

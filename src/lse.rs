@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::matrix::{Matrix, MatrixLayout};
+use crate::core::{Matrix, MatrixLayout};
 
 ///
 /// A mathematical LR-Decomposition of a square matrix A into
@@ -34,8 +34,8 @@ impl LrDecomposition<f64> {
     pub fn create(a: Matrix<f64>) -> Option<Self> {
         assert!(a.layout().is_square());
 
-        let mut p = Matrix::eye(a.layout().rows(), 1.0, 0.0);
-        let mut l = Matrix::eye(a.layout().rows(), 1.0, 0.0);
+        let mut p = Matrix::eye(a.layout().rows(), 1.0);
+        let mut l = Matrix::eye(a.layout().rows(), 1.0);
 
         let mut r = a;
 
@@ -144,7 +144,7 @@ pub struct QrDecomposition<T> {
 impl QrDecomposition<f64> {
     pub fn create(a: Matrix<f64>) -> Self {
         let mut r = a;
-        let mut q = Matrix::eye(r.layout().rows(), 1.0, 0.0);
+        let mut q = Matrix::eye(r.layout().rows(), 1.0);
 
         for c in 0..(r.layout().cols() - 1) {
             let mut v = Matrix::fill(MatrixLayout::new(r.layout().rows(), 1), 0.0);
@@ -165,7 +165,7 @@ impl QrDecomposition<f64> {
             let mut h = v.clone() * v.transposed();
             h.scale(2.0);
 
-            let qi = Matrix::eye(r.layout().rows(), 1.0, 0.0) - h;
+            let qi = Matrix::eye(r.layout().rows(), 1.0) - h;
 
             r = Matrix::mmul(&qi, r);
             q = Matrix::mmul(&qi.transposed(), q);
