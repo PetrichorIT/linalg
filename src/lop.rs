@@ -19,9 +19,9 @@
 //! are exceeded.
 //!
 
-use std::{fmt::Display, mem::swap, ops::Neg};
+use std::{fmt::Display, mem::swap, ops::AddAssign};
 
-use num_traits::Num;
+use num_traits::{Float, Num};
 
 use crate::core::{Matrix, MatrixLayout};
 
@@ -40,7 +40,7 @@ pub type LOP<T> = LinearOpimizationProblem<T>;
 /// solve the optimization problem an return the caclulated result.
 ///
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LinearOpimizationProblem<T: Num> {
+pub struct LinearOpimizationProblem<T: Float> {
     /// The non-constant coefficiant vector of the cost function.
     pub c: Matrix<T>,
     /// The constant offset coefficiant of the cost function.
@@ -55,7 +55,7 @@ pub struct LinearOpimizationProblem<T: Num> {
     pub b_eq: Matrix<T>,
 }
 
-impl<T: Num> LinearOpimizationProblem<T> {
+impl<T: Float> LinearOpimizationProblem<T> {
     ///
     /// Creates a new LOP using the given partial values.
     ///
@@ -117,12 +117,15 @@ impl<T: Num> LinearOpimizationProblem<T> {
     }
 }
 
-impl LinearOpimizationProblem<f64> {
+impl<T> LinearOpimizationProblem<T>
+where
+    T: Float + AddAssign,
+{
     ///
     /// Tries to solve the linear optimization problem using the default
     /// solving configuration.
     ///
-    pub fn solve(&self) -> Result<LOPSolution<f64>, &'static str> {
+    pub fn solve(&self) -> Result<LOPSolution<T>, &'static str> {
         self.solve_with(LOPOptions::default())
     }
 
@@ -140,7 +143,7 @@ impl LinearOpimizationProblem<f64> {
     /// [LinearOpimizationProblem::new()] be violated, or should the c and b vector
     /// sieze to be collumvectors.
     ///
-    pub fn solve_with(&self, options: LOPOptions) -> Result<LOPSolution<f64>, &'static str> {
+    pub fn solve_with(&self, options: LOPOptions) -> Result<LOPSolution<T>, &'static str> {
         assert!(self.c.layout().is_colvec());
         assert!(self.b.layout().is_colvec());
         assert!(self.b_eq.layout().is_colvec());
@@ -159,7 +162,7 @@ impl LinearOpimizationProblem<f64> {
         // All positions in the given matrix will be filled in the following
         // steps without using the matrix values as getter
         let layout = MatrixLayout::new(number_of_eq + 2, n + 1);
-        let mut mat = unsafe { Matrix::<f64>::uninitalized(layout) };
+        let mut mat = unsafe { Matrix::<T>::uninitalized(layout) };
 
         // Fill the Axy=b matrix
         if self.a.layout().rows() != 0 {
@@ -199,7 +202,7 @@ impl LinearOpimizationProblem<f64> {
         // Concerning matrix only the sum fields are still uninitialized
 
         // Sum up all rows of a_eq
-        let mut ch = Matrix::<f64>::fill(MatrixLayout::new(n + 1, 1), 0.0);
+        let mut ch = Matrix::<T>::zeroed(MatrixLayout::new(n + 1, 1));
         for o in self.a.layout().rows()..number_of_eq {
             for j in 0..mat.layout().cols() {
                 ch[j] += mat[(o, j)];
@@ -230,12 +233,12 @@ impl LinearOpimizationProblem<f64> {
         loop {
             // Get Pivot
 
-            let mut col_select = f64::INFINITY;
+            let mut col_select = T::infinity();
             let mut pv_col = None;
 
             for i in 0..n {
                 let raw_index = mat.layout().index((number_of_eq, i));
-                if mat[raw_index] <= 0.0 {
+                if mat[raw_index] <= T::zero() {
                     continue;
                 }
 
@@ -250,16 +253,16 @@ impl LinearOpimizationProblem<f64> {
             }
             let pv_col = pv_col.unwrap();
 
-            let mut row_select = f64::INFINITY;
+            let mut row_select = T::infinity();
             let mut pv_row = None;
 
             for j in 0..number_of_eq {
-                if mat[(j, pv_col)] == 0.0 {
+                if mat[(j, pv_col)] == T::zero() {
                     continue;
                 }
 
                 let r_value = mat[(j, n)] / mat[(j, pv_col)];
-                if r_value < 0.0 {
+                if r_value < T::zero() {
                     continue;
                 }
 
@@ -305,7 +308,7 @@ impl LinearOpimizationProblem<f64> {
             for row in 0..mat.layout().rows() {
                 for col in 0..mat.layout().cols() {
                     match (row == pv_row, col == pv_col) {
-                        (true, true) => mat[(row, col)] = 1.0 / pv,
+                        (true, true) => mat[(row, col)] = T::one() / pv,
                         (true, false) => mat[(row, col)] = old[(row, col)] / pv,
                         (false, true) => mat[(row, col)] = (old[(row, col)] / pv).neg(),
                         (false, false) => {
@@ -329,7 +332,7 @@ impl LinearOpimizationProblem<f64> {
             })
         }
 
-        if mat[(number_of_eq, n)] != 0.0 {
+        if mat[(number_of_eq, n)] != T::zero() {
             return Err(&"Problem is unbound (1)");
         }
 
@@ -343,7 +346,7 @@ impl LinearOpimizationProblem<f64> {
         // SAFTY:
         // Will be filled up in the next steps
         let layout = MatrixLayout::new(number_of_eq + 1, n + 1 - self.a_eq.layout().rows());
-        let mut mx = unsafe { Matrix::<f64>::uninitalized(layout) };
+        let mut mx = unsafe { Matrix::<T>::uninitalized(layout) };
 
         // Copy releveant Colums
         let mut col_idx = 0;
@@ -376,11 +379,11 @@ impl LinearOpimizationProblem<f64> {
         loop {
             // Get pivot
 
-            let mut col_select = f64::INFINITY;
+            let mut col_select = T::infinity();
             let mut pv_col = None;
 
             for i in 0..(mx.layout().cols() - 1) {
-                if mx[(number_of_eq, i)] <= 0.0 {
+                if mx[(number_of_eq, i)] <= T::zero() {
                     continue;
                 }
                 if mx[(number_of_eq, i)] < col_select {
@@ -394,15 +397,15 @@ impl LinearOpimizationProblem<f64> {
             }
             let pv_col = pv_col.unwrap();
 
-            let mut row_select = f64::INFINITY;
+            let mut row_select = T::infinity();
             let mut pv_row = None;
 
             for j in 0..number_of_eq {
-                if mx[(j, pv_col)] == 0.0 {
+                if mx[(j, pv_col)] == T::zero() {
                     continue;
                 }
                 let r_value = mx[(j, mx.layout().cols() - 1)] / mx[(j, pv_col)];
-                if r_value < 0.0 {
+                if r_value < T::zero() {
                     continue;
                 }
                 if r_value < row_select {
@@ -446,7 +449,7 @@ impl LinearOpimizationProblem<f64> {
             for row in 0..mx.layout().rows() {
                 for col in 0..mx.layout().cols() {
                     match (row == pv_row, col == pv_col) {
-                        (true, true) => mx[(row, col)] = 1.0 / pv,
+                        (true, true) => mx[(row, col)] = T::one() / pv,
                         (true, false) => mx[(row, col)] = old[(row, col)] / pv,
                         (false, true) => mx[(row, col)] = (old[(row, col)] / pv).neg(),
                         (false, false) => {
@@ -470,7 +473,7 @@ impl LinearOpimizationProblem<f64> {
             })
         }
 
-        let mut solution = Matrix::fill(MatrixLayout::new(n, 1), 0.0);
+        let mut solution = Matrix::zeroed(MatrixLayout::new(n, 1));
         for i in 0..non_base_vars.len() {
             let k = non_base_vars[i];
             if k > self.c.layout().rows() {

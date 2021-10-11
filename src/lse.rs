@@ -1,6 +1,9 @@
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    ops::{Add, AddAssign, DivAssign, Mul, SubAssign},
+};
 
-use num_traits::Num;
+use num_traits::{Float, Num};
 
 use crate::core::{Matrix, MatrixLayout};
 
@@ -23,7 +26,10 @@ pub struct LrDecomposition<T: Num> {
     pub p: Matrix<T>,
 }
 
-impl LrDecomposition<f64> {
+impl<T: Num> LrDecomposition<T>
+where
+    T: Float + AddAssign + SubAssign,
+{
     ///
     /// Creates a LR-Decomposition with a given matrix A.
     /// Will return None if the LSE is not expilictly solvable, meaning
@@ -33,7 +39,7 @@ impl LrDecomposition<f64> {
     ///
     /// Panics of applied to a non-square matrix.
     ///
-    pub fn create(a: Matrix<f64>) -> Option<Self> {
+    pub fn create(a: Matrix<T>) -> Option<Self> {
         assert!(a.layout().is_square());
 
         let mut p = Matrix::eye(a.layout().rows());
@@ -43,14 +49,14 @@ impl LrDecomposition<f64> {
 
         for i in 0..(r.layout().cols() - 1) {
             // Pivot check
-            if r[(i, i)] == 0.0 {
+            if r[(i, i)] == T::zero() {
                 // search for valid pivot
-                let pv_row = (i + 1..r.layout().cols()).find(|&k| r[(k, k)] != 0.0)?;
+                let pv_row = (i + 1..r.layout().cols()).find(|&k| r[(k, k)] != T::zero())?;
 
-                p[(i, i)] = 0.0;
-                p[(i, pv_row)] = 1.0;
-                p[(pv_row, i)] = 1.0;
-                p[(pv_row, pv_row)] = 0.0;
+                p[(i, i)] = T::zero();
+                p[(i, pv_row)] = T::one();
+                p[(pv_row, i)] = T::one();
+                p[(pv_row, pv_row)] = T::zero();
 
                 // swap rows in r
                 for j in 0..r.layout().cols() {
@@ -75,7 +81,8 @@ impl LrDecomposition<f64> {
                 l[(k, i)] = a;
 
                 for j in 0..r.layout().cols() {
-                    r[(k, j)] -= a * r[(i, j)];
+                    let d = a * r[(i, j)];
+                    r[(k, j)] -= d;
                 }
             }
         }
@@ -83,15 +90,15 @@ impl LrDecomposition<f64> {
         Some(LrDecomposition { l, r, p })
     }
 
-    pub fn solve(&self, b: Matrix<f64>) -> Matrix<f64> {
+    pub fn solve(&self, b: Matrix<T>) -> Matrix<T> {
         assert!(b.layout().is_colvec());
         assert!(b.layout().rows() == self.l.layout().rows());
 
         // Apply rowswap
-        let mut pb = Matrix::fill(b.layout().clone(), 0.0);
+        let mut pb = Matrix::zeroed(b.layout().clone());
         for row in 0..self.p.layout().rows() {
             for j in 0..self.p.layout().size() {
-                if self.p[(row, j)] == 1.0 {
+                if self.p[(row, j)] == T::one() {
                     pb[row] = b[j];
                     break;
                 }
@@ -102,18 +109,18 @@ impl LrDecomposition<f64> {
         // Rx = y
 
         // Apply L
-        let mut y = Matrix::fill(b.layout().clone(), 0.0);
+        let mut y = Matrix::zeroed(b.layout().clone());
         for i in 0..self.l.layout().rows() {
-            let mut s = 0.0;
+            let mut s = T::zero();
             for j in 0..i {
                 s += self.l[(i, j)] * y[j]
             }
             y[i] = (pb[i] - s) / self.l[(i, i)];
         }
 
-        let mut x = Matrix::fill(b.layout().clone(), 0.0);
+        let mut x = Matrix::zeroed(b.layout().clone());
         for i in (0..self.l.layout().rows()).rev() {
-            let mut s = 0.0;
+            let mut s = T::zero();
             for j in (i + 1)..self.l.layout().cols() {
                 s += self.r[(i, j)] * x[j]
             }
@@ -143,29 +150,32 @@ pub struct QrDecomposition<T: Num> {
     pub r: Matrix<T>,
 }
 
-impl QrDecomposition<f64> {
-    pub fn create(a: Matrix<f64>) -> Self {
+impl<T> QrDecomposition<T>
+where
+    T: Float + AddAssign + DivAssign + Mul<Output = T> + Add<Output = T>,
+{
+    pub fn create(a: Matrix<T>) -> Self {
         let mut r = a;
         let mut q = Matrix::eye(r.layout().rows());
 
         for c in 0..(r.layout().cols() - 1) {
-            let mut v = Matrix::fill(MatrixLayout::new(r.layout().rows(), 1), 0.0);
+            let mut v = Matrix::zeroed(MatrixLayout::new(r.layout().rows(), 1));
             for i in c..v.size() {
                 v[i] = r[(i, c)];
             }
 
             let sign = v[c].signum();
-            let norm = v.raw().iter().fold(0.0, |acc, &s| acc + s * s).sqrt();
+            let norm = v.raw().iter().fold(T::zero(), |acc, &s| acc + s * s).sqrt();
 
             v[c] += sign * norm;
 
-            let norm = v.raw().iter().fold(0.0, |acc, &s| acc + s * s).sqrt();
+            let norm = v.raw().iter().fold(T::zero(), |acc, &s| acc + s * s).sqrt();
             for i in c..v.size() {
                 v[i] /= norm;
             }
 
             let mut h = v.clone() * v.transposed();
-            h.scale(2.0);
+            h.scale(T::one() + T::one());
 
             let qi = Matrix::eye(r.layout().rows()) - h;
 
@@ -175,16 +185,22 @@ impl QrDecomposition<f64> {
 
         // Zero-Fragment cleanup
 
-        for k in 0..r.size() {
-            if r[k].abs() < 0.0001 {
-                r[k] = 0.0;
+        for i in 1..r.layout().rows() {
+            for j in 0..i {
+                r[(i, j)] = T::zero();
             }
         }
+
+        // for k in 0..r.size() {
+        //     if r[k].abs() < 0.0001 {
+        //         r[k] = T::zero();
+        //     }
+        // }
 
         QrDecomposition { q, r }
     }
 
-    pub fn solve(&self, b: Matrix<f64>) -> Matrix<f64> {
+    pub fn solve(&self, b: Matrix<T>) -> Matrix<T> {
         assert!(b.layout().is_colvec());
         assert!(self.q.layout().rows() == b.size());
 
@@ -193,12 +209,12 @@ impl QrDecomposition<f64> {
         // ==> Rx = y
 
         // preinit to prevent borrowing issues
-        let mut x = Matrix::fill(b.layout().clone(), 0.0);
+        let mut x = Matrix::zeroed(b.layout().clone());
 
         let y = Matrix::mmul(&self.q, b);
 
         for i in (0..self.r.layout().rows()).rev() {
-            let mut s = 0.0;
+            let mut s = T::zero();
             for j in (i + 1)..self.r.layout().cols() {
                 s += self.r[(i, j)] * x[j]
             }

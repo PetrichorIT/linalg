@@ -190,9 +190,9 @@ impl From<(usize, usize)> for MatrixLayout {
 /// A two-dimensional matrix of generic elements.
 ///
 /// This struct contains a layout element of type [MatrixLayout] and
-/// a raw buffer to store matrix cells. The size of the raw buffer thereby is
+/// a raw buffer to store matrix cells. The size of the row-major raw buffer thereby is
 /// defined by the layouts [MatrixLayout::size()] function.
-/// Note that the [Matrix] has technicly no generic constraint but all functions are
+/// Note that the [Matrix] has technicly no generic constraint but most functions are
 /// only implemented over the [Num] trait.
 ///
 /// # Example
@@ -869,7 +869,7 @@ where
 
 impl<T: Num> Mul for Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy + Default,
+    T: Mul<Output = T> + Add<Output = T> + Copy,
 {
     type Output = Self;
 
@@ -887,7 +887,7 @@ where
 
         for i in 0..result.layout.rows {
             for j in 0..result.layout.cols {
-                let mut sum = T::default();
+                let mut sum = T::zero();
                 for k in 0..self.layout.cols {
                     sum = sum + self[(i, k)] * rhs[(k, j)];
                 }
@@ -1130,7 +1130,7 @@ where
 
 impl<T: Num> Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy + Default,
+    T: Mul<Output = T> + Add<Output = T> + Copy,
 {
     pub fn mmul(&self, rhs: Self) -> Self {
         assert!(self.layout.cols == rhs.layout.rows);
@@ -1146,7 +1146,7 @@ where
 
         for i in 0..result.layout.rows {
             for j in 0..result.layout.cols {
-                let mut sum = T::default();
+                let mut sum = T::zero();
                 for k in 0..self.layout.cols {
                     sum = sum + self[(i, k)] * rhs[(k, j)];
                 }
