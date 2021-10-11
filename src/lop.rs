@@ -34,7 +34,10 @@ pub type LOP<T> = LinearOpimizationProblem<T>;
 /// A linear optimization problem in normal form.
 ///
 /// This structure describes a minimation problem of type
-/// $ \text{min} c^Tx + l with A_{eq}x=b_{eq} and Ax <= b and x >= 0 $
+/// ```math
+/// min c^T*x + l
+///     with Ax <= b and A{_eq}x <= b{_eq} and x >= 0
+/// ```
 ///
 /// This structure also holds the function [LinearOpimizationProblem::solve] to
 /// solve the optimization problem an return the caclulated result.
