@@ -229,9 +229,27 @@ impl<T> Matrix<T> {
     pub fn size(&self) -> usize {
         self.layout.size()
     }
-}
 
-impl<T> Matrix<T> {
+    /// Indicates whether a matrix is symetric square matrix or not.
+    pub fn is_symetric(&self) -> bool
+    where
+        T: PartialEq,
+    {
+        if !self.layout.is_square() {
+            return false;
+        }
+
+        for i in 0..self.layout.rows {
+            for j in 0..=i {
+                if self.raw[i * self.layout.rows + j] != self.raw[j * self.layout.rows + i] {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
     ///
     /// Creates a new matrix with a given layout over the given buffer.
     ///  
@@ -312,6 +330,93 @@ impl<T: Num> Matrix<T>
 where
     T: Copy,
 {
+    //
+    // 1 2 3 1
+    // 4 5 6 2
+    //
+
+    ///
+    /// Indicates whether all all elments over the main diagonal are zero.
+    /// Note that this functions can be applied to matrices of all forms not
+    /// just square matrices.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if applied to matrices of size 0.
+    ///
+    /// ```should_panic
+    /// use linalg::{matrix, core::Matrix};
+    ///
+    /// let m: Matrix<usize> = matrix![];
+    ///
+    /// println!("{}", m.is_lower_triag());
+    /// ````
+    ///
+    pub fn is_lower_triag(&self) -> bool {
+        let lcr = (self.layout.cols - 1).min(self.layout.rows);
+
+        for i in 0..lcr {
+            for j in (i + 1)..self.layout.cols {
+                if !self[(i, j)].is_zero() {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    ///
+    /// Indicates whether all all elments below the main diagonal are zero.
+    /// Note that this functions can be applied to matrices of all forms not
+    /// just square matrices.
+    ///
+    pub fn is_upper_triag(&self) -> bool {
+        for i in 1..self.layout.rows {
+            for j in 0..i.min(self.layout.cols) {
+                if !self[(i, j)].is_zero() {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    ///
+    /// Indicates whether the matrix only posses elements on the main diagonal
+    /// or not.
+    /// Note that this functions is not limited to square matrices.
+    /// This function will always return true if the matrix is created through the
+    /// [Matrix::diag()] constructor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use linalg::matrix;
+    ///
+    /// let m = matrix![
+    ///     1, 0, 0;
+    ///     0, 2, 0;
+    ///     0, 0, 3;
+    ///     0, 0, 0;
+    /// ];
+    ///
+    /// assert!(m.is_diag());
+    /// ```
+    ///
+    pub fn is_diag(&self) -> bool {
+        for i in 0..self.layout.rows {
+            for j in 0..self.layout.cols {
+                if !self[(i, j)].is_zero() && i != j {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
     ///
     /// Creates a new matrix copying values from the given
     /// slice into a new buffer, using the given layout.

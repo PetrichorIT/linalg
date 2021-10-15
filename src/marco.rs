@@ -32,29 +32,10 @@
 #[macro_export]
 macro_rules! matrix {
 
-    // Row matrix exception
-    ($($item:expr),* $(,)?) => (
+    () => (
         {
-            let buffer = vec![$($item,)*];
-
-            use linalg::core::MatrixLayout;
-            let layout = MatrixLayout::new(1, buffer.len());
-
-            use linalg::core::Matrix;
-            Matrix::new(layout, buffer)
-        }
-    );
-
-    // Collum matrix exception
-    ($($item:expr);* $(;)?) => (
-        {
-            let buffer = vec![$($item,)*];
-
-            use linalg::core::MatrixLayout;
-            let layout = MatrixLayout::new(buffer.len(), 1);
-
-            use linalg::core::Matrix;
-            Matrix::new(layout, buffer)
+            use linalg::core::{MatrixLayout, Matrix};
+            Matrix::new(MatrixLayout::new(0, 0), Vec::new())
         }
     );
 
@@ -68,46 +49,52 @@ macro_rules! matrix {
             let layout = MatrixLayout::new(rows, cols);
 
             use linalg::core::Matrix;
-            Matrix::new(layout,buffer)
+            Matrix::new(layout, buffer)
         }
     );
 
     ($($item:expr,)* ; $($($tail:expr,)*;)+ -> ($c:expr; [ $($b:expr,)* ])) => (
-        matrix!($($($tail,)*;)+ -> ($c + 1; [ $($b),* $($item,)* ]))
+        matrix!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
     );
+
+    // ($($item:expr),* $(,)?) => (
+    //     {
+    //         use linalg::core::MatrixLayout;
+    //         let buffer = vec![$($item,)*];
+    //         let layout = MatrixLayout::new(1, buffer.len());
+
+    //         use linalg::core::Matrix;
+    //         Matrix::new(layout, buffer)
+    //     }
+    // );
+
+    // ($($item:expr);* $(;)?) => (
+    //     {
+    //         use linalg::core::MatrixLayout;
+    //         let buffer = vec![$($item,)*];
+    //         let layout = MatrixLayout::new(buffer.len(), 1);
+
+    //         use linalg::core::Matrix;
+    //         Matrix::new(layout, buffer)
+    //     }
+    // );
 
     ($($($item:expr),*;)*) => (
         matrix!($($($item,)*;)* -> (0; []))
     );
 }
 
+// This marco is only used internally
+// and thus uses the crate prefix instead of the linalg prefix
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! mat {
 
-    // Row matrix exception
-    ($($item:expr),* $(,)?) => (
+    () => (
         {
-            let buffer = vec![$($item,)*];
-
-            use crate::core::MatrixLayout;
-            let layout = MatrixLayout::new(1, buffer.len());
-
-            use crate::core::Matrix;
-            Matrix::new(layout, buffer)
-        }
-    );
-
-    // Collum matrix exception
-    ($($item:expr);* $(;)?) => (
-        {
-            let buffer = vec![$($item,)*];
-
-            use crate::core::MatrixLayout;
-            let layout = MatrixLayout::new(buffer.len(), 1);
-
-            use crate::core::Matrix;
-            Matrix::new(layout, buffer)
+            use crate::core::{MatrixLayout, Matrix};
+            Matrix::new(MatrixLayout::new(0, 0), Vec::new())
         }
     );
 
@@ -121,13 +108,35 @@ macro_rules! mat {
             let layout = MatrixLayout::new(rows, cols);
 
             use crate::core::Matrix;
-            Matrix::new(layout,buffer)
+            Matrix::new(layout, buffer)
         }
     );
 
     ($($item:expr,)* ; $($($tail:expr,)*;)+ -> ($c:expr; [ $($b:expr,)* ])) => (
-        mat!($($($tail,)*;)+ -> ($c + 1; [ $($b),* $($item,)* ]))
+        mat!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
     );
+
+    // ($($item:expr),* $(,)?) => (
+    //     {
+    //         use crate::core::MatrixLayout;
+    //         let buffer = vec![$($item,)*];
+    //         let layout = MatrixLayout::new(1, buffer.len());
+
+    //         use crate::core::Matrix;
+    //         Matrix::new(layout, buffer)
+    //     }
+    // );
+
+    // ($($item:expr);* $(;)?) => (
+    //     {
+    //         use crate::core::MatrixLayout;
+    //         let buffer = vec![$($item,)*];
+    //         let layout = MatrixLayout::new(buffer.len(), 1);
+
+    //         use crate::core::Matrix;
+    //         Matrix::new(layout, buffer)
+    //     }
+    // );
 
     ($($($item:expr),*;)*) => (
         mat!($($($item,)*;)* -> (0; []))

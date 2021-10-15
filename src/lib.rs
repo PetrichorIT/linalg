@@ -3,6 +3,7 @@ mod marco;
 pub mod core;
 pub mod lop;
 pub mod lse;
+pub mod prelude;
 
 #[cfg(test)]
 mod tests {
@@ -18,9 +19,9 @@ mod tests {
     fn it_works() {
         assert_eq!(2 + 2, 4);
 
-        let v = mat![1, 2, 3; 1, 2, 3;];
+        let m = mat![ 1, 2, 0; 1, 2, 0;];
 
-        println!("{:?}", v)
+        println!("{}", m.is_lower_triag());
     }
 
     #[test]

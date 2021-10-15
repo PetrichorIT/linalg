@@ -1,8 +1,6 @@
-// Utils
-
-pub use crate::util::Zeroed;
-
 // Core exports
+
+pub use crate::matrix;
 
 pub use crate::core::Matrix;
 pub use crate::core::MatrixLayout;

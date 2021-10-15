@@ -10,6 +10,11 @@ version = "0.1.0"
 name = "linalg"
 path = "src/lib.rs"
 
+[[bin]]
+dependencies = ["linalg"]
+name = "linalg_test"
+path = "test/src.rs"
+
 [dependencies]
 num-complex = "0.4"
 num-traits = "0.2"
