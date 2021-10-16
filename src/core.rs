@@ -83,6 +83,12 @@ impl MatrixLayout {
         self.cols == 1
     }
 
+    /// Indicator if the layout is either a rowvec or colvec.
+    #[inline(always)]
+    pub fn is_vec(&self) -> bool {
+        self.cols == 1 || self.rows == 1
+    }
+
     ///
     /// A conversion function from a two-dimensional index to a
     /// one-dimensional index for the raw buffer.
@@ -230,26 +236,6 @@ impl<T> Matrix<T> {
         self.layout.size()
     }
 
-    /// Indicates whether a matrix is symetric square matrix or not.
-    pub fn is_symetric(&self) -> bool
-    where
-        T: PartialEq,
-    {
-        if !self.layout.is_square() {
-            return false;
-        }
-
-        for i in 0..self.layout.rows {
-            for j in 0..=i {
-                if self.raw[i * self.layout.rows + j] != self.raw[j * self.layout.rows + i] {
-                    return false;
-                }
-            }
-        }
-
-        true
-    }
-
     ///
     /// Creates a new matrix with a given layout over the given buffer.
     ///  
@@ -330,10 +316,22 @@ impl<T: Num> Matrix<T>
 where
     T: Copy,
 {
-    //
-    // 1 2 3 1
-    // 4 5 6 2
-    //
+    /// Indicates whether a matrix is symetric square matrix or not.
+    pub fn is_symetric(&self) -> bool {
+        if !self.layout.is_square() {
+            return false;
+        }
+
+        for i in 0..self.layout.rows {
+            for j in 0..=i {
+                if self.raw[i * self.layout.rows + j] != self.raw[j * self.layout.rows + i] {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
 
     ///
     /// Indicates whether all all elments over the main diagonal are zero.
@@ -979,28 +977,7 @@ where
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        assert!(self.layout.cols == rhs.layout.rows);
-
-        let layout = MatrixLayout {
-            rows: self.layout.rows,
-            cols: rhs.layout.cols,
-        };
-
-        // SAFTY:
-        // Matrix Multiplication gurantees the setting of all
-        let mut result = unsafe { Matrix::uninitalized(layout) };
-
-        for i in 0..result.layout.rows {
-            for j in 0..result.layout.cols {
-                let mut sum = T::zero();
-                for k in 0..self.layout.cols {
-                    sum = sum + self[(i, k)] * rhs[(k, j)];
-                }
-                result[(i, j)] = sum;
-            }
-        }
-
-        result
+        Matrix::mmul(&self, &rhs)
     }
 }
 
@@ -1009,28 +986,7 @@ where
     T: Mul<Output = T> + Add<Output = T> + Copy + Default,
 {
     fn mul_assign(&mut self, rhs: Self) {
-        assert!(self.layout.cols == rhs.layout.rows);
-
-        let layout = MatrixLayout {
-            rows: self.layout.rows,
-            cols: rhs.layout.cols,
-        };
-
-        // SAFTY:
-        // Matrix Multiplication gurantees the setting of all
-        let mut result = unsafe { Matrix::uninitalized(layout) };
-
-        for i in 0..result.layout.rows {
-            for j in 0..result.layout.cols {
-                let mut sum = T::default();
-                for k in 0..self.layout.cols {
-                    sum = sum + self[(i, k)] * rhs[(k, j)];
-                }
-                result[(i, j)] = sum;
-            }
-        }
-
-        *self = result
+        *self = Matrix::mmul(&self, &rhs);
     }
 }
 
@@ -1237,11 +1193,11 @@ impl<T: Num> Matrix<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy,
 {
-    pub fn mmul(&self, rhs: Self) -> Self {
-        assert!(self.layout.cols == rhs.layout.rows);
+    pub fn mmul(lhs: &Matrix<T>, rhs: &Matrix<T>) -> Matrix<T> {
+        assert!(lhs.layout.cols == rhs.layout.rows);
 
         let layout = MatrixLayout {
-            rows: self.layout.rows,
+            rows: lhs.layout.rows,
             cols: rhs.layout.cols,
         };
 
@@ -1252,8 +1208,8 @@ where
         for i in 0..result.layout.rows {
             for j in 0..result.layout.cols {
                 let mut sum = T::zero();
-                for k in 0..self.layout.cols {
-                    sum = sum + self[(i, k)] * rhs[(k, j)];
+                for k in 0..lhs.layout.cols {
+                    sum = sum + lhs[(i, k)] * rhs[(k, j)];
                 }
                 result[(i, j)] = sum;
             }

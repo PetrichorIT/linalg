@@ -7,6 +7,10 @@ pub use crate::core::MatrixLayout;
 
 // lse exports
 
+pub use crate::lse::det;
+pub use crate::lse::lr;
+pub use crate::lse::lr_dry;
+pub use crate::lse::qr;
 pub use crate::lse::LrDecomposition;
 pub use crate::lse::QrDecomposition;
 

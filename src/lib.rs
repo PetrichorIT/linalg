@@ -33,13 +33,13 @@ mod tests {
         ])
         .expect("Failed");
 
-        let qr = QrDecomposition::create(matrix.clone());
+        let qr = qr(matrix.clone());
 
         println!("{}", qr);
 
         let b = Matrix::<f64>::from(vec![1.0, 2.0, 3.0]);
 
-        let x = qr.solve(b);
+        let x = qr.solve(&b);
 
         let bb = matrix * x;
 
