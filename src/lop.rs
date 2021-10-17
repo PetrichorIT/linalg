@@ -499,7 +499,7 @@ where
 /// # Example
 ///
 /// ```no_run
-/// use linalg::{lop::*, core::*};
+/// use linalg::prelude::*;
 ///
 /// # fn get_some_lop() -> LOP<f64> { todo!() }
 /// let lop = get_some_lop();

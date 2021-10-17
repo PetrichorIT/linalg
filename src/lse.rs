@@ -419,3 +419,148 @@ where
         }
     }
 }
+
+///
+/// Returns the trace of the given square matrix.
+///
+/// # Panics
+///
+/// This function panics if applied to a non-square matrix.
+///
+/// # Examples
+///
+/// ```
+/// use linalg::prelude::*;
+///
+/// let matrix = Matrix::diag(vec![ 1, 2, 3 ]);
+/// let tr = trace(&matrix);
+/// assert_eq!(tr, 1 + 2 + 3);
+/// ```
+pub fn trace<T>(matrix: &Matrix<T>) -> T
+where
+    T: Num + Copy,
+{
+    assert!(matrix.layout().is_square());
+    let mut sum = T::zero();
+    for i in 0..matrix.layout().rows() {
+        sum = sum + matrix[(i, i)]
+    }
+    sum
+}
+
+/*** Gaus-Jordan Invert ***/
+
+///
+/// Returns a inverted matrix of the given matrix if existent or [None] otherwise.
+///
+/// This function uses the Gauss-Jordan algorithm to solve a system of linear equations,
+/// to generate the inverted matrix. If the lse is not solvable, no inverted matrix exists.
+///
+/// # Panics
+///
+/// This function panics if applied to a non-square matrix.
+///
+/// # Example
+///
+/// ```
+/// use linalg::prelude::*;
+///
+/// let matrix = matrix![
+///     2.0, 1.0;
+///     6.0, 4.0;
+/// ];
+///
+/// let inverted = inv(matrix.clone()).unwrap();
+///
+/// assert_eq!(Matrix::mmul(&matrix, &inverted), Matrix::eye(2));
+/// ```
+pub fn inv<T>(mut matrix: Matrix<T>) -> Option<Matrix<T>>
+where
+    T: Num + Copy,
+{
+    assert!(matrix.layout().is_square());
+
+    // TODO:
+    // Make memory efficeient method using collum.major matrices
+
+    // SAFTY:
+    //  all cells will be filled up
+
+    let n = matrix.layout().rows();
+    matrix.resize(MatrixLayout::new(n, 2 * n));
+
+    for i in 0..n {
+        for j in 0..n {
+            matrix[(i, n + j)] = if i == j { T::one() } else { T::zero() };
+        }
+    }
+
+    _gauss_jordan_impl(&mut matrix)?;
+
+    // SAFTY:
+    // will be filled up
+    let mut result = unsafe { Matrix::uninitalized(MatrixLayout::new(n, n)) };
+
+    for i in 0..n {
+        for j in 0..n {
+            result[(i, j)] = matrix[(i, n + j)];
+        }
+    }
+
+    Some(result)
+}
+
+/// Internal fn to apply the gaus jordan reduction to a given matrix.
+/// Panics if cols < rows
+fn _gauss_jordan_impl<T>(matrix: &mut Matrix<T>) -> Option<()>
+where
+    T: Num + Copy,
+{
+    assert!(matrix.layout().cols() >= matrix.layout().rows());
+
+    for i in 0..matrix.layout().rows() {
+        // Find pivot
+        if matrix[(i, i)] == T::zero() {
+            let pv_row = (i + 1..matrix.layout().rows()).find(|&k| matrix[(k, k)] != T::zero())?;
+
+            // Swap lines
+            for j in 0..matrix.layout().cols() {
+                let temp = matrix[(i, j)];
+                matrix[(i, j)] = matrix[(pv_row, j)];
+                matrix[(pv_row, j)] = temp;
+            }
+        }
+
+        // Normalize line (enforce pv = 1)
+        let pv = matrix[(i, i)];
+        for j in 0..matrix.layout().cols() {
+            matrix[(i, j)] = matrix[(i, j)] / pv;
+        }
+
+        // Gauss el
+        if i + 1 != matrix.layout().rows() {
+            for k in (i + 1)..matrix.layout().rows() {
+                let a = matrix[(k, i)];
+
+                for j in 0..matrix.layout().cols() {
+                    let d = a * matrix[(i, j)];
+                    matrix[(k, j)] = matrix[(k, j)] - d;
+                }
+            }
+        }
+
+        // Jordan elim
+        if i != 0 {
+            for k in 0..i {
+                let a = matrix[(k, i)];
+
+                for j in 0..matrix.layout().cols() {
+                    let d = a * matrix[(i, j)];
+                    matrix[(k, j)] = matrix[(k, j)] - d;
+                }
+            }
+        }
+    }
+
+    Some(())
+}

@@ -11,9 +11,8 @@ mod tests {
     use crate::core::*;
     use crate::lop::LOPOptions;
     use crate::lop::LOP;
-    use crate::lse::*;
+    use crate::lse::inv;
     use crate::mat;
-    use std::convert::TryFrom;
 
     #[test]
     fn it_works() {
@@ -25,25 +24,15 @@ mod tests {
     }
 
     #[test]
-    fn lr() {
-        let matrix: Matrix<f64> = Matrix::try_from(vec![
-            vec![2.0, 4.0, -4.0],
-            vec![1.0, 1.0, 2.0],
-            vec![2.0, -3.0, 0.0],
-        ])
-        .expect("Failed");
+    fn lr_test() {
+        let matrix = mat![
+            2.0, 1.0;
+            6.0, 4.0;
+        ];
 
-        let qr = qr(matrix.clone());
+        let gj = inv(matrix);
 
-        println!("{}", qr);
-
-        let b = Matrix::<f64>::from(vec![1.0, 2.0, 3.0]);
-
-        let x = qr.solve(&b);
-
-        let bb = matrix * x;
-
-        println!("{}", bb);
+        println!("{}", gj.unwrap());
     }
 
     #[test]

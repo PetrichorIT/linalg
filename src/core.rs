@@ -32,7 +32,7 @@ use num_traits::Num;
 /// # Example
 ///
 /// ```
-/// use linalg::core::*;
+/// use linalg::prelude::*;
 ///
 /// let layout = MatrixLayout::new(2, 3);
 /// let matrix = Matrix::fill(layout, 0usize);
@@ -98,7 +98,7 @@ impl MatrixLayout {
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let layout = MatrixLayout::new(2, 3);
     /// assert!(layout.index((1, 1)) == 4);
@@ -139,7 +139,7 @@ impl MatrixLayout {
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let data = vec![
     ///     vec![1, 2, 3],
@@ -204,7 +204,7 @@ impl From<(usize, usize)> for MatrixLayout {
 /// # Example
 ///
 /// ```
-/// use linalg::core::*;
+/// use linalg::prelude::*;
 ///
 /// let matrix: Matrix<usize> = Matrix::fill(MatrixLayout::new(2, 3), 0);
 /// assert!(matrix.size() == 2*3);
@@ -245,7 +245,7 @@ impl<T> Matrix<T> {
     /// This can be archived should the layouts size match the buffers length.
     ///
     /// ```should_panic
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// // Creates a 6 element buffer
     /// // -> layouts (1, 6) (2, 3) (3, 2) (6, 1) are possible
@@ -288,7 +288,11 @@ impl<T> Matrix<T> {
     /// are either filled with valid instances of the given type,
     /// or never used.
     ///
-    pub unsafe fn uninitalized(layout: MatrixLayout) -> Self {
+    pub unsafe fn uninitalized<U>(layout: U) -> Self
+    where
+        U: Into<MatrixLayout>,
+    {
+        let layout = layout.into();
         let mut raw = Vec::with_capacity(layout.size());
 
         // SAFTY:
@@ -458,7 +462,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let matrix = Matrix::fill(MatrixLayout::new(2, 3), 1usize);
     /// assert!(matrix[(0, 0)] == 1usize);
@@ -484,7 +488,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let matrix = Matrix::fill(MatrixLayout::new(2, 3), 0usize);
     /// assert!(matrix[(0, 0)] == 0usize);
@@ -503,7 +507,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let matrix = Matrix::diag(vec![1, 2, 3]);
     /// assert!(matrix.layout().is_square());
@@ -533,8 +537,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::{Matrix, MatrixLayout};
-    /// use linalg::matrix;
+    /// use linalg::prelude::*;
     ///
     /// let mut matrix = matrix![
     ///     1, 2;
@@ -584,7 +587,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let eye = Matrix::<usize>::eye(3);
     /// assert!(eye.layout().is_square());
@@ -1042,7 +1045,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let diag = Matrix::diag(vec![1, 2, 3]);
     /// assert!(*diag.layout() == MatrixLayout::new(3, 3));
@@ -1069,7 +1072,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     /// use std::convert::TryFrom;
     ///
     /// let mut matrix = Matrix::<usize>::try_from(vec![
@@ -1097,7 +1100,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     /// use std::convert::TryFrom;
     ///
     /// let matrix = Matrix::<usize>::try_from(vec![
@@ -1138,7 +1141,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let matrix = Matrix::diag(vec![1, 2, 3]);
     /// let double = matrix.scalar(2);
@@ -1172,7 +1175,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use linalg::core::*;
+    /// use linalg::prelude::*;
     ///
     /// let matrix = Matrix::diag(vec![1, 2, 3]);
     /// let mut double = matrix.clone();

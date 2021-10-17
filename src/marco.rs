@@ -16,8 +16,7 @@
 /// # Example
 ///
 /// ```
-/// use linalg::core::Matrix;
-/// use linalg::matrix;
+/// use linalg::prelude::*;
 ///
 /// let macro_gen = matrix![
 ///     1, 2, 3;
