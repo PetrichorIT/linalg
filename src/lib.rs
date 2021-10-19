@@ -13,6 +13,7 @@ mod tests {
     use crate::lop::LOP;
     use crate::lse::inv;
     use crate::mat;
+    use crate::prelude::eig;
 
     #[test]
     fn it_works() {
@@ -33,6 +34,16 @@ mod tests {
         let gj = inv(matrix);
 
         println!("{}", gj.unwrap());
+    }
+
+    #[test]
+    fn eig_test() {
+        let matrix = mat![
+             2.0, -1.0;
+             -4.0, 2.0;
+        ];
+
+        println!("{:?}", eig(matrix, 1))
     }
 
     #[test]
