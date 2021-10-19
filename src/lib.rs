@@ -43,7 +43,7 @@ mod tests {
              -4.0, 2.0;
         ];
 
-        println!("{:?}", eig(matrix, 1))
+        println!("{:?}", eig(matrix, 100))
     }
 
     #[test]

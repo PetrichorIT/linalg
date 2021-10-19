@@ -211,7 +211,7 @@ pub struct QrDecomposition<T: Num> {
 
 impl<T> QrDecomposition<T>
 where
-    T: Float + AddAssign + DivAssign + Mul<Output = T> + Add<Output = T>,
+    T: Float + Mul<Output = T> + Add<Output = T>,
 {
     ///
     /// Uses the given decomposition and the argument to solve the matrix equation:
@@ -254,7 +254,7 @@ where
         for i in (0..self.r.layout().rows()).rev() {
             let mut s = T::zero();
             for j in (i + 1)..self.r.layout().cols() {
-                s += self.r[(i, j)] * x[j]
+                s = s + self.r[(i, j)] * x[j]
             }
 
             x[i] = (y[i] - s) / self.r[(i, i)];
@@ -318,7 +318,7 @@ where
 ///
 pub fn qr<T>(mut matrix: Matrix<T>) -> QrDecomposition<T>
 where
-    T: Float + Copy + AddAssign + DivAssign,
+    T: Float + Copy,
 {
     let q = _qr_impl(&mut matrix);
     QrDecomposition { q, r: matrix }
@@ -332,7 +332,7 @@ where
 ///
 fn _qr_impl<T>(r: &mut Matrix<T>) -> Matrix<T>
 where
-    T: Float + Copy + AddAssign + DivAssign,
+    T: Float + Copy,
 {
     let mut q = Matrix::eye(r.layout().rows());
 
@@ -345,11 +345,11 @@ where
         let sign = v[c].signum();
         let norm = v.raw().iter().fold(T::zero(), |acc, &s| acc + s * s).sqrt();
 
-        v[c] += sign * norm;
+        v[c] = v[c] + sign * norm;
 
         let norm = v.raw().iter().fold(T::zero(), |acc, &s| acc + s * s).sqrt();
         for i in c..v.size() {
-            v[i] /= norm;
+            v[i] = v[i] / norm;
         }
 
         let mut h = v.clone() * v.transposed();
