@@ -211,7 +211,7 @@ pub struct QrDecomposition<T: Num> {
 
 impl<T> QrDecomposition<T>
 where
-    T: Float + AddAssign + DivAssign + Mul<Output = T> + Add<Output = T>,
+    T: Float + Mul<Output = T> + Add<Output = T>,
 {
     ///
     /// Uses the given decomposition and the argument to solve the matrix equation:
@@ -254,7 +254,7 @@ where
         for i in (0..self.r.layout().rows()).rev() {
             let mut s = T::zero();
             for j in (i + 1)..self.r.layout().cols() {
-                s += self.r[(i, j)] * x[j]
+                s = s + self.r[(i, j)] * x[j]
             }
 
             x[i] = (y[i] - s) / self.r[(i, i)];
@@ -318,7 +318,7 @@ where
 ///
 pub fn qr<T>(mut matrix: Matrix<T>) -> QrDecomposition<T>
 where
-    T: Float + Copy + AddAssign + DivAssign,
+    T: Float + Copy,
 {
     let q = _qr_impl(&mut matrix);
     QrDecomposition { q, r: matrix }
@@ -332,7 +332,7 @@ where
 ///
 fn _qr_impl<T>(r: &mut Matrix<T>) -> Matrix<T>
 where
-    T: Float + Copy + AddAssign + DivAssign,
+    T: Float + Copy,
 {
     let mut q = Matrix::eye(r.layout().rows());
 
@@ -345,11 +345,11 @@ where
         let sign = v[c].signum();
         let norm = v.raw().iter().fold(T::zero(), |acc, &s| acc + s * s).sqrt();
 
-        v[c] += sign * norm;
+        v[c] = v[c] + sign * norm;
 
         let norm = v.raw().iter().fold(T::zero(), |acc, &s| acc + s * s).sqrt();
         for i in c..v.size() {
-            v[i] /= norm;
+            v[i] = v[i] / norm;
         }
 
         let mut h = v.clone() * v.transposed();
@@ -563,4 +563,54 @@ where
     }
 
     Some(())
+}
+
+///
+/// Computes the eigenvalues of a given matrix using
+/// the qr algorithm.
+///
+/// This function applies the QR-Algorithm to the given square matrix,
+/// assumming all eigenvalues have no complex component (this is guaranteed with symmeric matrices).
+/// note that the number of iterations is closely corrolated to the expected error of the computation.
+/// As a rule of thumb, use the dimension of the matrix as iteration count.
+///
+/// # Panics
+///
+/// This functions panics should the number of iterations not be positiv,
+/// or should the matrix be non-square.
+///
+/// # Example
+///
+/// ```
+/// use linalg::prelude::*;
+///
+/// let matrix = matrix![
+///      2.0, -1.0;
+///     -4.0,  2.0;
+/// ];
+///
+/// let eigv = eig(matrix, 2);
+///
+/// // The "real" eigenvalue should be 4 but this is a floating point inprecision.
+/// assert_eq!(eigv, vec![ 4.000000000000002, 0.0 ]);
+/// ```
+///
+pub fn eig<T>(mut matrix: Matrix<T>, iterations: usize) -> Vec<T>
+where
+    T: Float + Copy + AddAssign + DivAssign,
+{
+    assert!(iterations > 0);
+    assert!(matrix.layout().is_square());
+
+    for _i in 0..iterations {
+        let q = _qr_impl(&mut matrix);
+        matrix = Matrix::mmul(&matrix, &q);
+    }
+
+    let mut values = Vec::with_capacity(matrix.layout().rows());
+    for i in 0..matrix.layout().rows() {
+        values.push(matrix[(i, i)])
+    }
+
+    values
 }

@@ -8,6 +8,7 @@ pub use crate::core::MatrixLayout;
 // lse exports
 
 pub use crate::lse::det;
+pub use crate::lse::eig;
 pub use crate::lse::inv;
 pub use crate::lse::lr;
 pub use crate::lse::lr_dry;
