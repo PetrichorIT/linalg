@@ -970,30 +970,6 @@ where
 }
 
 ///
-/// Matrix: Multiplication
-///
-
-impl<T: Num> Mul for Matrix<T>
-where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
-{
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        Matrix::mmul(&self, &rhs)
-    }
-}
-
-impl<T: Num> MulAssign for Matrix<T>
-where
-    T: Mul<Output = T> + Add<Output = T> + Copy + Default,
-{
-    fn mul_assign(&mut self, rhs: Self) {
-        *self = Matrix::mmul(&self, &rhs);
-    }
-}
-
-///
 /// Matrix: Misc Traits
 ///
 
@@ -1119,14 +1095,31 @@ where
         // and thus the same size requirements for the raw vector
         // there must be a eqivalent value for each cell in the original matrix
         let mut transposed = unsafe { Matrix::uninitalized(self.layout.transposed()) };
-
-        for i in 0..transposed.layout.rows {
-            for j in 0..transposed.layout.cols {
-                transposed[(i, j)] = self[(j, i)]
-            }
-        }
+        self.transpose_into(&mut transposed);
 
         transposed
+    }
+
+    ///
+    /// Writes the tranposed matrix into the given target,
+    /// assumming the buffer is already pre-allocted, either as allready used
+    /// memory or as uninitialied memory.
+    ///
+    /// # Panics
+    ///
+    /// This function assumms that the target has a layout that is
+    /// at least sized equally (layout.size()) to provide te correct amount of
+    /// memory.
+    ///
+    pub fn transpose_into(&self, target: &mut Self) {
+        assert!(target.layout().size() == self.layout().transposed().size());
+        target.layout = self.layout().transposed();
+
+        for i in 0..target.layout.rows {
+            for j in 0..target.layout.cols {
+                target[(i, j)] = self[(j, i)]
+            }
+        }
     }
 }
 
@@ -1164,6 +1157,16 @@ where
     }
 }
 
+impl<T: Num> Mul<T> for Matrix<T>
+where
+    T: Mul + Copy,
+{
+    type Output = Matrix<<T as Mul>::Output>;
+    fn mul(self, rhs: T) -> Self::Output {
+        self.scalar(rhs)
+    }
+}
+
 impl<T: Num> Matrix<T>
 where
     T: Mul<Output = T> + Copy,
@@ -1192,13 +1195,45 @@ where
     }
 }
 
+impl<T: Num> MulAssign<T> for Matrix<T>
+where
+    T: Mul<Output = T> + Copy,
+{
+    fn mul_assign(&mut self, rhs: T) {
+        self.scale(rhs)
+    }
+}
+
+///
+/// Matrix: Multiplication
+///
+
 impl<T: Num> Matrix<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy,
 {
+    ///
+    /// Performs a matrix mutiplication with the two operands,
+    /// and returns the result.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// use linalg::prelude::*;
+    /// 
+    /// let a = matrix![
+    ///     8, -2,  9;
+    ///     2,  1, -8;
+    ///     4,  -5, 1;
+    /// ];
+    /// 
+    /// let b = Matrix::eye(3);
+    /// let c = Matrix::mmul(&a, &b);
+    /// 
+    /// assert_eq!(a, c);
+    /// ```
+    /// 
     pub fn mmul(lhs: &Matrix<T>, rhs: &Matrix<T>) -> Matrix<T> {
-        assert!(lhs.layout.cols == rhs.layout.rows);
-
         let layout = MatrixLayout {
             rows: lhs.layout.rows,
             cols: rhs.layout.cols,
@@ -1207,6 +1242,23 @@ where
         // SAFTY:
         // Matrix Multiplication gurantees the setting of all
         let mut result = unsafe { Matrix::uninitalized(layout) };
+        Matrix::mmul_into(lhs, rhs, &mut result);
+        result
+    }
+
+    ///
+    /// Performs a matrix multiplication using the first, and second arguments
+    /// as operands and the thrid operand as target container.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if either the operands are incompatible (lhs.cols != rhs.rows),
+    /// or the result container does not conform to the expected layout (lhs.rows, rhs.cols).
+    ///
+    pub fn mmul_into(lhs: &Matrix<T>, rhs: &Matrix<T>, result: &mut Matrix<T>) {
+        assert!(lhs.layout.cols == rhs.layout.rows);
+        assert!(result.layout.rows == lhs.layout.rows);
+        assert!(result.layout.cols == rhs.layout.cols);
 
         for i in 0..result.layout.rows {
             for j in 0..result.layout.cols {
@@ -1217,10 +1269,32 @@ where
                 result[(i, j)] = sum;
             }
         }
-
-        result
     }
 }
+
+impl<T: Num> Mul<Matrix<T>> for Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn mul(self, rhs: Matrix<T>) -> Self::Output {
+        Matrix::mmul(&self, &rhs)
+    }
+}
+
+impl<T: Num> MulAssign<Matrix<T>> for Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy,
+{
+    fn mul_assign(&mut self, rhs: Matrix<T>) {
+        *self = Matrix::mmul(self, &rhs)
+    }
+}
+
+//
+// Matrix Negation
+//
 
 impl<T: Num> Neg for Matrix<T>
 where
