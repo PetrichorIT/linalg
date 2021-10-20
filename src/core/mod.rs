@@ -22,6 +22,8 @@ use std::{
 
 use num_traits::Num;
 
+mod tests;
+
 ///
 /// A description of a 2d-matrix dimensions.
 ///
@@ -469,12 +471,15 @@ where
     /// assert!(matrix[(1, 2)] == 1usize);
     /// ```
     ///
-    pub fn fill(layout: MatrixLayout, filler: T) -> Self {
+    pub fn fill<U>(layout: U, filler: T) -> Self
+    where
+        U: Into<MatrixLayout>,
+    {
         // SAFTY:
         // Can be used since the underling vector will be filled according to its
         // own len, thus all cells used are guarnteed to be there
         // since the vector has the given size AND capacity
-        let mut matrix = unsafe { Self::uninitalized(layout) };
+        let mut matrix = unsafe { Self::uninitalized(layout.into()) };
         for cell in &mut matrix.raw {
             *cell = filler;
         }
@@ -496,7 +501,10 @@ where
     /// ```
     ///
     #[inline]
-    pub fn zeroed(layout: MatrixLayout) -> Self {
+    pub fn zeroed<U>(layout: U) -> Self
+    where
+        U: Into<MatrixLayout>,
+    {
         Self::fill(layout, T::zero())
     }
 
@@ -522,6 +530,32 @@ where
         let mut matrix = Matrix::zeroed(layout);
         for i in 0..vec.len() {
             matrix[(i, i)] = vec[i];
+        }
+
+        matrix
+    }
+
+    ///
+    /// Creates a new eye-matrix with the given eye element
+    /// filling the remaing cells with the filler element.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg::prelude::*;
+    ///
+    /// let eye = Matrix::<usize>::eye(3);
+    /// assert!(eye.layout().is_square());
+    /// assert!(eye.layout().rows() == 3);
+    /// assert!(eye[(1, 1)] == 1);
+    /// ```
+    ///
+    pub fn eye(size: usize) -> Self {
+        let layout = MatrixLayout::square(size);
+
+        let mut matrix = Matrix::zeroed(layout);
+        for i in 0..size {
+            matrix[(i, i)] = T::one();
         }
 
         matrix
@@ -578,32 +612,6 @@ where
             }
             *self = matrix;
         }
-    }
-
-    ///
-    /// Creates a new eye-matrix with the given eye element
-    /// filling the remaing cells with the filler element.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use linalg::prelude::*;
-    ///
-    /// let eye = Matrix::<usize>::eye(3);
-    /// assert!(eye.layout().is_square());
-    /// assert!(eye.layout().rows() == 3);
-    /// assert!(eye[(1, 1)] == 1);
-    /// ```
-    ///
-    pub fn eye(size: usize) -> Self {
-        let layout = MatrixLayout::square(size);
-
-        let mut matrix = Matrix::zeroed(layout);
-        for i in 0..size {
-            matrix[(i, i)] = T::one();
-        }
-
-        matrix
     }
 }
 
@@ -747,7 +755,7 @@ where
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         assert!(self.layout == other.layout);
-        assert!(self.layout.is_colvec() || self.layout.is_rowvec());
+        assert!(self.layout.is_vec());
 
         let mut err = false;
         let mut eq = true;
@@ -781,6 +789,58 @@ where
                 }
             }
         }
+    }
+
+    fn lt(&self, other: &Self) -> bool {
+        assert_eq!(*self.layout(), *other.layout());
+        assert!(self.layout().is_vec());
+
+        for k in 0..self.layout().size() {
+            if self.raw[k] >= other.raw[k] {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    fn le(&self, other: &Self) -> bool {
+        assert_eq!(*self.layout(), *other.layout());
+        assert!(self.layout().is_vec());
+
+        for k in 0..self.layout().size() {
+            if self.raw[k] > other.raw[k] {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    fn gt(&self, other: &Self) -> bool {
+        assert_eq!(*self.layout(), *other.layout());
+        assert!(self.layout().is_vec());
+
+        for k in 0..self.layout().size() {
+            if self.raw[k] <= other.raw[k] {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    fn ge(&self, other: &Self) -> bool {
+        assert_eq!(*self.layout(), *other.layout());
+        assert!(self.layout().is_vec());
+
+        for k in 0..self.layout().size() {
+            if self.raw[k] < other.raw[k] {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 
@@ -1162,8 +1222,9 @@ where
     T: Mul + Copy,
 {
     type Output = Matrix<<T as Mul>::Output>;
-    fn mul(self, rhs: T) -> Self::Output {
-        self.scalar(rhs)
+    fn mul(mut self, rhs: T) -> Self::Output {
+        self.scale(rhs);
+        self
     }
 }
 
@@ -1215,24 +1276,24 @@ where
     ///
     /// Performs a matrix mutiplication with the two operands,
     /// and returns the result.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use linalg::prelude::*;
-    /// 
+    ///
     /// let a = matrix![
     ///     8, -2,  9;
     ///     2,  1, -8;
     ///     4,  -5, 1;
     /// ];
-    /// 
+    ///
     /// let b = Matrix::eye(3);
     /// let c = Matrix::mmul(&a, &b);
-    /// 
+    ///
     /// assert_eq!(a, c);
     /// ```
-    /// 
+    ///
     pub fn mmul(lhs: &Matrix<T>, rhs: &Matrix<T>) -> Matrix<T> {
         let layout = MatrixLayout {
             rows: lhs.layout.rows,
@@ -1270,6 +1331,10 @@ where
             }
         }
     }
+
+    //
+    // TODO: Optimize mmul under the consideration that lhs is consumed
+    // in Mul (sometimes rhs as well)
 }
 
 impl<T: Num> Mul<Matrix<T>> for Matrix<T>
@@ -1283,11 +1348,31 @@ where
     }
 }
 
+impl<T: Num> Mul<&Matrix<T>> for Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn mul(self, rhs: &Matrix<T>) -> Self::Output {
+        Matrix::mmul(&self, &rhs)
+    }
+}
+
 impl<T: Num> MulAssign<Matrix<T>> for Matrix<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy,
 {
     fn mul_assign(&mut self, rhs: Matrix<T>) {
+        *self = Matrix::mmul(self, &rhs)
+    }
+}
+
+impl<T: Num> MulAssign<&Matrix<T>> for Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy,
+{
+    fn mul_assign(&mut self, rhs: &Matrix<T>) {
         *self = Matrix::mmul(self, &rhs)
     }
 }
@@ -1298,13 +1383,27 @@ where
 
 impl<T: Num> Neg for Matrix<T>
 where
+    T: Neg<Output = T> + Copy,
+{
+    type Output = Self;
+
+    fn neg(mut self) -> Self::Output {
+        for k in 0..self.layout.size() {
+            self.raw[k] = self.raw[k].neg();
+        }
+
+        self
+    }
+}
+
+impl<T: Num> Neg for &Matrix<T>
+where
     T: Neg + Copy,
 {
     type Output = Matrix<<T as Neg>::Output>;
 
     fn neg(self) -> Self::Output {
-        // SAFTY:
-        // Matrix shares same layout thus all cells will be initalized with a raw iteration.
+        // SAFTY: All cells will be filled through a raw itr
         let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
 
         for k in 0..self.layout.size() {
