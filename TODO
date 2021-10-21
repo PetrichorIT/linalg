@@ -1,0 +1,8 @@
+# Add eigenvectors (and better eigenvalues if possible)
+
+It is possible see:
+https://github.com/stiv-yakovenko/rust-eigen/blob/master/eigen.rs
+
+# Implement O(<n^3) matrix mutiplication for at least Float better Mul+Add
+
+Dew it

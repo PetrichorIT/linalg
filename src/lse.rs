@@ -1,11 +1,14 @@
 ///
 /// A collection of functions and solver for linerar systemes of equations.
 ///
-use crate::core::{Matrix, MatrixLayout};
+use crate::{
+    core::{Matrix, MatrixLayout},
+    num::{NumConstants, NumFractionalConstants},
+};
 use num_traits::{Float, Num};
 use std::{
     fmt::Display,
-    ops::{Add, AddAssign, DivAssign, Mul},
+    ops::{Add, AddAssign, Mul},
 };
 
 /*** LR DECOMPOSITION ***/
@@ -318,7 +321,7 @@ where
 ///
 pub fn qr<T>(mut matrix: Matrix<T>) -> QrDecomposition<T>
 where
-    T: Float + Copy,
+    T: Float + Copy + NumConstants,
 {
     let q = _qr_impl(&mut matrix);
     QrDecomposition { q, r: matrix }
@@ -332,7 +335,7 @@ where
 ///
 fn _qr_impl<T>(r: &mut Matrix<T>) -> Matrix<T>
 where
-    T: Float + Copy,
+    T: Float + Copy + NumConstants,
 {
     let mut q = Matrix::eye(r.layout().rows());
 
@@ -353,7 +356,7 @@ where
         }
 
         let mut h = v.clone() * v.transposed();
-        h.scale(T::one() + T::one());
+        h.scale(T::two());
 
         let qi = Matrix::eye(r.layout().rows()) - h;
 
@@ -597,7 +600,7 @@ where
 ///
 pub fn eig<T>(mut matrix: Matrix<T>, iterations: usize) -> Vec<T>
 where
-    T: Float + Copy + AddAssign + DivAssign,
+    T: Float + Copy + NumConstants,
 {
     assert!(iterations > 0);
     assert!(matrix.layout().is_square());
@@ -613,4 +616,53 @@ where
     }
 
     values
+}
+
+// BROKEN
+pub fn tridiag<T>(matrix: Matrix<T>) -> Matrix<T>
+where
+    T: Float + Copy + NumFractionalConstants,
+{
+    assert!(matrix.layout().is_square());
+    let n = matrix.layout().rows();
+
+    let mut a = T::one();
+    for j in 2..n {
+        a = a + matrix[(j, 0)] * matrix[(j, 0)];
+    }
+    a = a.sqrt() * matrix[(1, 0)].signum().neg();
+
+    let r = (T::half() * (a * a - matrix[(1, 0)] * a)).sqrt();
+
+    let mut v = Matrix::zeroed((n, 1));
+    v[0] = T::zero();
+    v[1] = (matrix[(1, 0)] - a) / T::two() * r;
+    for k in 2..n {
+        v[k] = matrix[(k, 0)] / T::two() * r;
+    }
+
+    let p1 = Matrix::eye(n) - Matrix::mmul(&v, &v.transposed()).scalar(T::two());
+    let mut mt = Matrix::mmul(&p1, &Matrix::mmul(&matrix, &p1));
+
+    for k in 1..(n - 2) {
+        let mut a = T::one();
+        for j in (k + 1)..n {
+            a = a + matrix[(j, k)] * matrix[(j, k)];
+        }
+        a = a.sqrt() * matrix[(k + 1, k)].signum().neg();
+
+        let r = (T::half() * (a * a - matrix[(k + 1, k)] * a)).sqrt();
+        let mut v = Matrix::zeroed((n, 1));
+        // v[k+1]
+        v[k] = (matrix[(k + 1, k)] - a) / T::two() * r;
+
+        for j in (k + 2)..n {
+            v[j] = matrix[(j, k)] / T::two() * r;
+        }
+
+        let p = Matrix::eye(n) - Matrix::mmul(&v, &v.transposed()).scalar(T::two());
+        mt = Matrix::mmul(&p, &Matrix::mmul(&mt, &p));
+    }
+
+    mt
 }

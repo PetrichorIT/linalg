@@ -1,9 +1,15 @@
 mod marco;
+mod num;
 
 pub mod core;
 pub mod lop;
 pub mod lse;
 pub mod prelude;
+
+#[allow(non_camel_case_types)]
+pub type c32 = num_complex::Complex32;
+#[allow(non_camel_case_types)]
+pub type c64 = num_complex::Complex64;
 
 #[cfg(test)]
 mod tests {
@@ -12,6 +18,7 @@ mod tests {
     use crate::lop::LOPOptions;
     use crate::lop::LOP;
     use crate::lse::inv;
+    use crate::lse::tridiag;
     use crate::mat;
     use crate::prelude::eig;
 
@@ -44,6 +51,19 @@ mod tests {
         ];
 
         println!("{:?}", eig(matrix, 100))
+    }
+
+    #[test]
+    fn tdg_test() {
+        let m = mat![
+            1.0, 2.0, 6.0, -2.0;
+            3.0, 1.0, 0.0, 65.0;
+            (-2.0), -9.0, -0.4, 1.0;
+            1.0, 1.0, 1.0, 1.0;
+        ];
+
+        let t = tridiag(m);
+        println!("{}", t);
     }
 
     #[test]
