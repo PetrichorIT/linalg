@@ -1,6 +1,7 @@
-///
-/// A collection of functions and solver for linerar systemes of equations.
-///
+//!
+//! A collection of functions and solver for linerar systemes of equations.
+//!
+
 use crate::{
     core::{Matrix, MatrixLayout},
     num::{NumConstants, NumFractionalConstants},
@@ -8,7 +9,7 @@ use crate::{
 use num_traits::{Float, Num};
 use std::{
     fmt::Display,
-    ops::{Add, AddAssign, Mul},
+    ops::{Add, Mul},
 };
 
 /*** LR DECOMPOSITION ***/
@@ -34,7 +35,7 @@ pub struct LrDecomposition<T: Num> {
 
 impl<T: Num> LrDecomposition<T>
 where
-    T: Float + AddAssign,
+    T: Float,
 {
     pub fn solve(&self, b: &Matrix<T>) -> Matrix<T> {
         assert!(b.layout().is_colvec());
@@ -59,7 +60,7 @@ where
         for i in 0..self.l.layout().rows() {
             let mut s = T::zero();
             for j in 0..i {
-                s += self.l[(i, j)] * y[j]
+                s = s + self.l[(i, j)] * y[j]
             }
             y[i] = (pb[i] - s) / self.l[(i, i)];
         }
@@ -68,7 +69,7 @@ where
         for i in (0..self.l.layout().rows()).rev() {
             let mut s = T::zero();
             for j in (i + 1)..self.l.layout().cols() {
-                s += self.r[(i, j)] * x[j]
+                s = s + self.r[(i, j)] * x[j]
             }
 
             x[i] = (y[i] - s) / self.r[(i, i)];
@@ -598,14 +599,14 @@ where
 /// assert_eq!(eigv, vec![ 4.000000000000002, 0.0 ]);
 /// ```
 ///
-pub fn eig<T>(mut matrix: Matrix<T>, iterations: usize) -> Vec<T>
+pub fn eigv<T>(mut matrix: Matrix<T>, itr: usize) -> Vec<T>
 where
     T: Float + Copy + NumConstants,
 {
-    assert!(iterations > 0);
+    assert!(itr > 0);
     assert!(matrix.layout().is_square());
 
-    for _i in 0..iterations {
+    for _i in 0..itr {
         let q = _qr_impl(&mut matrix);
         matrix = Matrix::mmul(&matrix, &q);
     }
@@ -616,6 +617,72 @@ where
     }
 
     values
+}
+
+///
+/// Performs a limited power iteration using the second operand as start vector.
+///
+/// # Panics
+///
+/// This function panics should the first operand be a non-square matrix,
+/// or should the second operand not be a colvec, or if the third operand
+/// is not real-positiv.
+///  
+pub fn eigv_powitr<T>(matrix: &Matrix<T>, x: &Matrix<T>, itr: usize) -> (T, Matrix<T>)
+where
+    T: Float + Copy,
+{
+    assert!(itr > 0);
+    assert!(matrix.layout().is_square());
+    assert!(matrix.layout().is_colvec());
+
+    let mut x = Matrix::mmul(matrix, x);
+    for _ in 1..itr {
+        x = Matrix::mmul(matrix, &x)
+    }
+
+    let norm = x.iter().fold(T::zero(), |acc, &c| acc + c * c).sqrt();
+    let y = x / norm;
+
+    let ay = Matrix::mmul(matrix, &y);
+    let mut l = T::zero();
+    for i in 0..y.size() {
+        l = l + y[i] * ay[i]
+    }
+
+    (l, y)
+}
+
+///
+/// Performs a limited inverse power iteration using the third operand as start vector.
+///
+/// Note that this function may not return any value if the inverse matrix cannot
+/// be constructed using the given l (this generally only happens if the matrix itself is non-invertable).
+///
+/// # Panics
+///
+/// This function panics should the second operand be a non-square matrix,
+/// or should the third operand not be a colvec, or if the fourth operand
+/// is not real-positiv, or the first operand be zero.
+///  
+pub fn eigv_powitr_inv<T>(
+    l: T,
+    matrix: &Matrix<T>,
+    x: &Matrix<T>,
+    itr: usize,
+) -> Option<(T, Matrix<T>)>
+where
+    T: Float + Copy,
+{
+    assert!(l != T::zero());
+    assert!(itr > 0);
+    assert!(matrix.layout().is_square());
+    assert!(matrix.layout().is_colvec());
+
+    let a = matrix - &Matrix::eye(matrix.layout().rows()).scalar(l);
+    let a = inv(a)?;
+
+    Some(eigv_powitr(&a, x, itr))
 }
 
 // BROKEN

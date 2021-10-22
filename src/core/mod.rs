@@ -16,7 +16,7 @@ use std::{
     mem::swap,
     ops::{
         Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref,
-        DerefMut, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
+        DerefMut, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
     },
 };
 
@@ -645,7 +645,7 @@ impl<T: Num> TryFrom<Vec<Vec<T>>> for Matrix<T> {
 /// given vector as elements.
 ///
 
-impl<T: Num> From<Vec<T>> for Matrix<T> {
+impl<T> From<Vec<T>> for Matrix<T> {
     fn from(raw: Vec<T>) -> Self {
         Matrix {
             layout: MatrixLayout {
@@ -654,6 +654,12 @@ impl<T: Num> From<Vec<T>> for Matrix<T> {
             },
             raw,
         }
+    }
+}
+
+impl<T> Into<Vec<T>> for Matrix<T> {
+    fn into(self) -> Vec<T> {
+        self.raw
     }
 }
 
@@ -897,6 +903,27 @@ where
         // SAFTY: Since the iteration will follow the raw vector thus will fill
         // all elements. Since layouts are equal, all operands are indeed provided
         let mut result = unsafe { Matrix::uninitalized(self.layout) };
+
+        for i in 0..result.raw.len() {
+            result.raw[i] = self.raw[i].sub(rhs.raw[i]);
+        }
+
+        result
+    }
+}
+
+impl<T: Num> Sub for &Matrix<T>
+where
+    T: Sub + Copy,
+{
+    type Output = Matrix<<T as Sub>::Output>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        assert!(self.layout == rhs.layout);
+
+        // SAFTY: Since the iteration will follow the raw vector thus will fill
+        // all elements. Since layouts are equal, all operands are indeed provided
+        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
 
         for i in 0..result.raw.len() {
             result.raw[i] = self.raw[i].sub(rhs.raw[i]);
@@ -1228,6 +1255,17 @@ where
     }
 }
 
+impl<T: Num> Div<T> for Matrix<T>
+where
+    T: Mul + Copy,
+{
+    type Output = Matrix<<T as Div>::Output>;
+    fn div(mut self, rhs: T) -> Self::Output {
+        self.scale(T::one() / rhs);
+        self
+    }
+}
+
 impl<T: Num> Matrix<T>
 where
     T: Mul<Output = T> + Copy,
@@ -1262,6 +1300,15 @@ where
 {
     fn mul_assign(&mut self, rhs: T) {
         self.scale(rhs)
+    }
+}
+
+impl<T: Num> DivAssign<T> for Matrix<T>
+where
+    T: Div<Output = T> + Copy,
+{
+    fn div_assign(&mut self, rhs: T) {
+        self.scale(T::one() / rhs)
     }
 }
 

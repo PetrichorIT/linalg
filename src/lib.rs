@@ -5,6 +5,7 @@ pub mod core;
 pub mod discret;
 pub mod lop;
 pub mod lse;
+pub mod poly;
 pub mod prelude;
 
 #[allow(non_camel_case_types)]
@@ -21,7 +22,7 @@ mod tests {
     use crate::lse::inv;
     use crate::lse::tridiag;
     use crate::mat;
-    use crate::prelude::eig;
+    use crate::prelude::eigv;
     use crate::prelude::stirling2;
 
     #[test]
@@ -55,7 +56,7 @@ mod tests {
              -4.0, 2.0;
         ];
 
-        println!("{:?}", eig(matrix, 100))
+        println!("{:?}", eigv(matrix, 100))
     }
 
     #[test]

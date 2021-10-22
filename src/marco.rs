@@ -56,28 +56,6 @@ macro_rules! matrix {
         matrix!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
     );
 
-    // ($($item:expr),* $(,)?) => (
-    //     {
-    //         use linalg::core::MatrixLayout;
-    //         let buffer = vec![$($item,)*];
-    //         let layout = MatrixLayout::new(1, buffer.len());
-
-    //         use linalg::core::Matrix;
-    //         Matrix::new(layout, buffer)
-    //     }
-    // );
-
-    // ($($item:expr);* $(;)?) => (
-    //     {
-    //         use linalg::core::MatrixLayout;
-    //         let buffer = vec![$($item,)*];
-    //         let layout = MatrixLayout::new(buffer.len(), 1);
-
-    //         use linalg::core::Matrix;
-    //         Matrix::new(layout, buffer)
-    //     }
-    // );
-
     ($($($item:expr),*;)*) => (
         matrix!($($($item,)*;)* -> (0; []))
     );
@@ -114,28 +92,6 @@ macro_rules! mat {
     ($($item:expr,)* ; $($($tail:expr,)*;)+ -> ($c:expr; [ $($b:expr,)* ])) => (
         mat!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
     );
-
-    // ($($item:expr),* $(,)?) => (
-    //     {
-    //         use crate::core::MatrixLayout;
-    //         let buffer = vec![$($item,)*];
-    //         let layout = MatrixLayout::new(1, buffer.len());
-
-    //         use crate::core::Matrix;
-    //         Matrix::new(layout, buffer)
-    //     }
-    // );
-
-    // ($($item:expr);* $(;)?) => (
-    //     {
-    //         use crate::core::MatrixLayout;
-    //         let buffer = vec![$($item,)*];
-    //         let layout = MatrixLayout::new(buffer.len(), 1);
-
-    //         use crate::core::Matrix;
-    //         Matrix::new(layout, buffer)
-    //     }
-    // );
 
     ($($($item:expr),*;)*) => (
         mat!($($($item,)*;)* -> (0; []))
