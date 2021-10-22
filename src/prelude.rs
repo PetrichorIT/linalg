@@ -5,6 +5,16 @@ pub use crate::matrix;
 pub use crate::core::Matrix;
 pub use crate::core::MatrixLayout;
 
+// disc export
+
+pub use crate::discret::binom;
+pub use crate::discret::fac;
+pub use crate::discret::permut_of_type;
+pub use crate::discret::prt_over;
+pub use crate::discret::prt_under;
+pub use crate::discret::stirling1;
+pub use crate::discret::stirling2;
+
 // lse exports
 
 pub use crate::lse::det;

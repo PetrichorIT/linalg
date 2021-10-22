@@ -2,6 +2,7 @@ mod marco;
 mod num;
 
 pub mod core;
+pub mod discret;
 pub mod lop;
 pub mod lse;
 pub mod prelude;
@@ -21,14 +22,18 @@ mod tests {
     use crate::lse::tridiag;
     use crate::mat;
     use crate::prelude::eig;
+    use crate::prelude::stirling2;
 
     #[test]
     fn it_works() {
-        assert_eq!(2 + 2, 4);
+        let mut m = Matrix::zeroed((5, 5));
+        for i in 0..5 {
+            for j in 0..=i {
+                m[(i, j)] = stirling2(i, j)
+            }
+        }
 
-        let m = mat![ 1, 2, 0; 1, 2, 0;];
-
-        println!("{}", m.is_lower_triag());
+        println!("{}", m)
     }
 
     #[test]
