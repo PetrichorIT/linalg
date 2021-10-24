@@ -77,7 +77,7 @@ pub fn prt_over<T: Num + Copy + PartialOrd>(n: T, k: T) -> T {
 /// in their cycle form.
 ///
 pub fn permut_of_type(typ: &[(usize, usize)]) -> usize {
-    let mut numerator = 0;
+    let mut numerator = 1;
     let mut n = 0;
     for class in typ {
         numerator *= fac(class.1) * class.0.pow(class.1 as u32);
@@ -150,6 +150,144 @@ pub fn binom(n: usize, k: usize) -> usize {
 }
 
 ///
+/// A toolset to caculate mutiple bionomial coefficeients efficently
+///
+/// This module provides the functionallity to caculate binomial coefficents,
+/// and memorize the recursive steps, to reuse those steps (saved as a table)
+/// to caculate the next coefficeient without duplicated steps.
+///
+/// ```
+/// use linalg::prelude::binom;
+/// use linalg::prelude::binom_tbl::*;
+///
+/// // Generates a table that at least holds the values up to binom(4, 4);
+/// let mut table = gen(4, 4);
+///
+/// // Use constant time operations to get allready caculated values
+/// let binom_3_3 = table[idx(3, 3)];
+/// assert_eq!(binom_3_3, binom(3, 3));
+///
+/// // Use expand to increase the table to hold new values (at least (n, n))
+/// let (n, k) = (5, 5);
+/// expand(&mut table, n);
+///
+/// let binom_5_5 = table[idx(5, 5)];
+/// assert_eq!(binom_5_5, binom(5, 5));
+///
+/// // Use getter to automaticly expand if nessecary
+/// let binom_6_6 = get(&mut table, 6, 6);
+/// assert_eq!(binom_6_6, binom(6, 6));
+/// ```
+pub mod binom_tbl {
+    ///
+    /// Generates a recursiv table to calculate binomial coefficents.
+    ///
+    /// Note thath this function will compute all values up to (n_cap, k_cap)
+    /// meaning all values with n < n_cap and all values with n == n_cap and k <= k_cap.
+    ///
+    pub fn gen(n_cap: usize, k_cap: usize) -> Vec<usize> {
+        // This function will generate a vec to be interprerted row-major
+        // with truncated rows where row i has i+1 elements
+
+        assert!(k_cap <= n_cap);
+
+        let tb_size: usize = (n_cap + 1) * (n_cap + 1);
+        let upper_triag: usize = (1..=n_cap).sum();
+        let size = tb_size - upper_triag - (n_cap - k_cap);
+
+        let mut result = Vec::with_capacity(size);
+
+        for i in 0..=n_cap {
+            result.push(1);
+            for j in 1..=i {
+                if j == i {
+                    result.push(1)
+                } else {
+                    // (i, j) = (i-1, j-1) + (i-1, j)
+                    let idx = result.len() - i;
+                    result.push(result[idx - 1] + result[idx]);
+                }
+            }
+        }
+
+        result
+    }
+
+    ///
+    /// Calculates a bionomial coefficent based on the values in the given table.
+    ///
+    /// This function either extracts the allready cacluated value from the table
+    /// or expands the table until it holds the searched value.
+    ///
+    pub fn get(table: &mut Vec<usize>, n: usize, k: usize) -> usize {
+        assert!(k <= n);
+        let idx = idx(n, k);
+
+        if idx >= table.len() {
+            expand(table, n)
+        }
+        table[idx]
+    }
+
+    ///
+    /// Calculates the index of a entry in the table.
+    ///
+    #[inline(always)]
+    pub fn idx(n: usize, k: usize) -> usize {
+        let n_offset: usize = (1..=n).sum();
+        n_offset + k
+    }
+
+    ///
+    /// Caculates the current capacity (thus all calculated values) of
+    /// a given table.
+    ///
+    pub fn cap(table: &Vec<usize>) -> (usize, usize) {
+        let mut k_cap = table.len();
+        let mut n_cap = 1;
+        while k_cap > n_cap {
+            k_cap -= n_cap;
+            n_cap += 1;
+        }
+
+        n_cap -= 1;
+        k_cap -= 1;
+
+        (n_cap, k_cap)
+    }
+
+    ///
+    /// Expands the table to contain values up to (n, n).
+    ///
+    pub fn expand(table: &mut Vec<usize>, n: usize) {
+        // extract n_cap, j_cap to append
+        let (n_cap, k_cap) = cap(table);
+
+        // fill up current row
+        for j in k_cap..n_cap {
+            if n_cap == j + 1 {
+                table.push(1)
+            } else {
+                let idx = table.len() - n_cap;
+                table.push(table[idx - 1] + table[idx]);
+            }
+        }
+
+        for i in (n_cap + 1)..=n {
+            table.push(1);
+            for j in 1..=i {
+                if i == j {
+                    table.push(1)
+                } else {
+                    let idx = table.len() - i;
+                    table.push(table[idx - 1] + table[idx]);
+                }
+            }
+        }
+    }
+}
+
+///
 /// Computes the stirling number of first type.
 ///
 /// This function computes s(n, k),
@@ -212,6 +350,142 @@ pub fn stirling1(n: usize, k: usize) -> usize {
 }
 
 ///
+/// A toolset to caculate mutiple stirling(1) numbers efficently
+///
+/// This module provides the functionallity to caculate stirling(1) coefficents,
+/// and memorize the recursive steps, to reuse those steps (saved as a table)
+/// to caculate the next instances without duplicated steps.
+///
+/// ```
+/// use linalg::prelude::stirling1;
+/// use linalg::prelude::stirling1_tbl::*;
+///
+/// // Generates a table that at least holds the values up to stirling1(4, 4);
+/// let mut table = gen(4, 4);
+///
+/// // Use constant time operations to get allready caculated values
+/// let stir1_3_3 = table[idx(3, 3)];
+/// assert_eq!(stir1_3_3, stirling1(3, 3));
+///
+/// // Use expand to increase the table to hold new values (at least (n, n))
+/// let (n, k) = (5, 5);
+/// expand(&mut table, n);
+///
+/// let stir1_5_5 = table[idx(n, k)];
+/// assert_eq!(stir1_5_5, stirling1(n, k));
+///
+/// // Use getter to automaticly expand if nessecary
+/// let stir1_6_6 = get(&mut table, 6, 6);
+/// assert_eq!(stir1_6_6, stirling1(6, 6));
+/// ```
+pub mod stirling1_tbl {
+    ///
+    /// Generates a new stirling(1) table containing all values up to (n_cap, k_cap).
+    ///
+    pub fn gen(n_cap: usize, k_cap: usize) -> Vec<usize> {
+        // This function will generate a vec to be interprerted row-major
+        // with truncated rows where row i has i+1 elements
+
+        assert!(k_cap <= n_cap);
+
+        let tb_size: usize = (n_cap + 1) * (n_cap + 1);
+        let upper_triag: usize = (1..=n_cap).sum();
+        let size = tb_size - upper_triag - (n_cap - k_cap);
+
+        let mut result = Vec::with_capacity(size);
+
+        result.push(1);
+        for i in 1..=n_cap {
+            result.push(0);
+            for j in 1..=i {
+                if j == i {
+                    result.push(1)
+                } else {
+                    // (i, j) = (i-1, j-1) + (i-1, j)
+                    let idx = result.len() - i;
+                    result.push(result[idx - 1] + result[idx] * (i - 1));
+                }
+            }
+        }
+
+        result
+    }
+
+    ///
+    /// Calculates a stirling(1) number based on the values in the given table.
+    ///
+    /// This function either extracts the allready cacluated value from the table
+    /// or expands the table until it holds the searched value.
+    ///
+    pub fn get(table: &mut Vec<usize>, n: usize, k: usize) -> usize {
+        assert!(k <= n);
+        let idx = idx(n, k);
+
+        if idx >= table.len() {
+            expand(table, n)
+        }
+        table[idx]
+    }
+
+    ///
+    /// Calculates the index of a entry in the binom table.
+    ///
+    #[inline(always)]
+    pub fn idx(n: usize, k: usize) -> usize {
+        let n_offset: usize = (1..=n).sum();
+        n_offset + k
+    }
+
+    ///
+    /// Caculates the current capacity (thus all calculated values) of
+    /// a given table.
+    ///
+    pub fn cap(table: &Vec<usize>) -> (usize, usize) {
+        let mut k_cap = table.len();
+        let mut n_cap = 1;
+        while k_cap > n_cap {
+            k_cap -= n_cap;
+            n_cap += 1;
+        }
+
+        n_cap -= 1;
+        k_cap -= 1;
+
+        (n_cap, k_cap)
+    }
+
+    ///
+    /// Expands the table to contain values up to (n, n).
+    ///
+    pub fn expand(table: &mut Vec<usize>, n: usize) {
+        // extract n_cap, j_cap to append
+        let (n_cap, k_cap) = cap(table);
+
+        // fill up current row
+        for j in k_cap..n_cap {
+            if n_cap == j + 1 {
+                table.push(1)
+            } else {
+                let idx = table.len() - n_cap;
+                table.push(table[idx - 1] + table[idx] * (n_cap - 1));
+            }
+        }
+
+        for i in (n_cap + 1)..=n {
+            table.push(0);
+            for j in 1..=i {
+                if i == j {
+                    table.push(1)
+                } else {
+                    let idx = table.len() - i;
+                    table.push(table[idx - 1] + table[idx] * (i - 1));
+                }
+            }
+        }
+    }
+}
+
+///
 /// Computes the stirling number of second type.
 ///
 /// This function computes S(n, k),
@@ -271,4 +545,151 @@ pub fn stirling2(n: usize, k: usize) -> usize {
     }
 
     table[size - 1]
+}
+
+///
+/// A toolset to caculate mutiple stirling(2) numbers efficently
+///
+/// This module provides the functionallity to caculate stirling(2) coefficents,
+/// and memorize the recursive steps, to reuse those steps (saved as a table)
+/// to caculate the next instances without duplicated steps.
+///
+/// ```
+/// use linalg::prelude::stirling2;
+/// use linalg::prelude::stirling2_tbl::*;
+///
+/// // Generates a table that at least holds the values up to stirling1(4, 4);
+/// let mut table = gen(4, 4);
+///
+/// // Use constant time operations to get allready caculated values
+/// let stir2_3_3 = table[idx(3, 3)];
+/// assert_eq!(stir2_3_3, stirling2(3, 3));
+///
+/// // Use expand to increase the table to hold new values (at least (n, n))
+/// let (n, k) = (5, 5);
+/// expand(&mut table, n);
+///
+/// let stir2_5_5 = table[idx(n, k)];
+/// assert_eq!(stir2_5_5, stirling2(n, k));
+///
+/// // Use getter to automaticly expand if nessecary
+/// let stir2_6_6 = get(&mut table, 6, 6);
+/// assert_eq!(stir2_6_6, stirling2(6, 6));
+/// ```
+pub mod stirling2_tbl {
+    ///
+    /// Generates a new table containing stirling(2) values up to (n_cap, k_cap).
+    ///
+    pub fn gen(n_cap: usize, k_cap: usize) -> Vec<usize> {
+        // This function will generate a vec to be interprerted row-major
+        // with truncated rows where row i has i+1 elements
+
+        assert!(k_cap <= n_cap);
+
+        let tb_size: usize = (n_cap + 1) * (n_cap + 1);
+        let upper_triag: usize = (1..=n_cap).sum();
+        let size = tb_size - upper_triag - (n_cap - k_cap);
+
+        let mut result = Vec::with_capacity(size);
+
+        result.push(1);
+        for i in 1..=n_cap {
+            result.push(0);
+            for j in 1..=i {
+                if j == i {
+                    result.push(1)
+                } else {
+                    // (i, j) = (i-1, j-1) + (i-1, j)
+                    let idx = result.len() - i;
+                    result.push(result[idx - 1] + result[idx] * j);
+                }
+            }
+        }
+
+        result
+    }
+
+    ///
+    /// Calculates a stirling(2) numbers based on the values in the given table.
+    ///
+    /// This function either extracts the allready cacluated value from the table
+    /// or expands the table until it holds the searched value.
+    ///
+    pub fn get(table: &mut Vec<usize>, n: usize, k: usize) -> usize {
+        assert!(k <= n);
+        let idx = idx(n, k);
+
+        if idx >= table.len() {
+            expand(table, n)
+        }
+        table[idx]
+    }
+
+    ///
+    /// Calculates the index of a entry in the binom table.
+    ///
+    #[inline(always)]
+    pub fn idx(n: usize, k: usize) -> usize {
+        let n_offset: usize = (1..=n).sum();
+        n_offset + k
+    }
+
+    ///
+    /// Caculates the current capacity (thus all calculated values) of
+    /// a given table.
+    ///
+    pub fn cap(table: &Vec<usize>) -> (usize, usize) {
+        let mut k_cap = table.len();
+        let mut n_cap = 1;
+        while k_cap > n_cap {
+            k_cap -= n_cap;
+            n_cap += 1;
+        }
+
+        n_cap -= 1;
+        k_cap -= 1;
+
+        (n_cap, k_cap)
+    }
+
+    ///
+    /// Expands the table to contain values up to (n, n)
+    ///
+    pub fn expand(table: &mut Vec<usize>, n: usize) {
+        // extract n_cap, j_cap to append
+        let (n_cap, k_cap) = cap(table);
+
+        // fill up current row
+        for j in k_cap..n_cap {
+            if n_cap == j + 1 {
+                table.push(1)
+            } else {
+                let idx = table.len() - n_cap;
+                table.push(table[idx - 1] + table[idx] * (j + 1));
+            }
+        }
+
+        for i in (n_cap + 1)..=n {
+            table.push(0);
+            for j in 1..=i {
+                if i == j {
+                    table.push(1)
+                } else {
+                    let idx = table.len() - i;
+                    table.push(table[idx - 1] + table[idx] * j);
+                }
+            }
+        }
+    }
+}
+
+///
+/// Computes the bell number of the given operand n.
+///
+pub fn bell(n: usize) -> usize {
+    let mut result = 0;
+    for k in 0..=n {
+        result = result + stirling2(n, k)
+    }
+    result
 }

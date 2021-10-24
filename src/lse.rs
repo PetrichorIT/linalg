@@ -599,7 +599,7 @@ where
 /// assert_eq!(eigv, vec![ 4.000000000000002, 0.0 ]);
 /// ```
 ///
-pub fn eigv<T>(mut matrix: Matrix<T>, itr: usize) -> Vec<T>
+pub fn eig<T>(mut matrix: Matrix<T>, itr: usize) -> Vec<T>
 where
     T: Float + Copy + NumConstants,
 {

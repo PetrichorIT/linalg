@@ -22,19 +22,29 @@ mod tests {
     use crate::lse::inv;
     use crate::lse::tridiag;
     use crate::mat;
-    use crate::prelude::eigv;
+    use crate::prelude::eig;
     use crate::prelude::stirling2;
+    use crate::prelude::stirling2_tbl;
 
     #[test]
     fn it_works() {
-        let mut m = Matrix::zeroed((5, 5));
-        for i in 0..5 {
+        let mut matrix = Matrix::zeroed((7, 7));
+        for i in 0..7 {
             for j in 0..=i {
-                m[(i, j)] = stirling2(i, j)
+                matrix[(i, j)] = stirling2(i, j);
             }
         }
 
-        println!("{}", m)
+        println!("{}", matrix);
+
+        let mut buf = stirling2_tbl::gen(3, 3);
+        for i in 0..7 {
+            for j in 0..=i {
+                let res = stirling2_tbl::get(&mut buf, i, j);
+                print!("{} ", res);
+            }
+            println!()
+        }
     }
 
     #[test]
@@ -56,7 +66,7 @@ mod tests {
              -4.0, 2.0;
         ];
 
-        println!("{:?}", eigv(matrix, 100))
+        println!("{:?}", eig(matrix, 100))
     }
 
     #[test]
