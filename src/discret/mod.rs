@@ -2,6 +2,8 @@
 
 use num_traits::{Num, Zero};
 
+mod tests;
+
 ///
 /// Computes the faculty of the given operand n.
 ///
@@ -20,6 +22,9 @@ use num_traits::{Num, Zero};
 ///
 #[inline(always)]
 pub fn fac<T: Num + Copy + PartialOrd>(n: T) -> T {
+    if n.is_zero() {
+        return T::one();
+    }
     prt_under(n, n)
 }
 
@@ -58,7 +63,7 @@ pub fn prt_over<T: Num + Copy + PartialOrd>(n: T, k: T) -> T {
     let mut res = n;
     let mut fc = n;
 
-    while fc < n + k {
+    while fc < n + k - T::one() {
         fc = fc + T::one();
         res = res * fc;
     }
