@@ -24,7 +24,7 @@ mod tests {
     use crate::mat;
     use crate::prelude::eig;
     use crate::prelude::stirling2;
-    use crate::prelude::stirling2_tbl;
+    use crate::prelude::Stirling2Tbl;
 
     #[test]
     fn it_works() {
@@ -37,10 +37,10 @@ mod tests {
 
         println!("{}", matrix);
 
-        let mut buf = stirling2_tbl::gen(3, 3);
+        let mut buf = Stirling2Tbl::new(3, 3);
         for i in 0..7 {
             for j in 0..=i {
-                let res = stirling2_tbl::get(&mut buf, i, j);
+                let res = buf.get(i, j);
                 print!("{} ", res);
             }
             println!()

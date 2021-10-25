@@ -162,35 +162,45 @@ pub fn binom(n: usize, k: usize) -> usize {
 /// to caculate the next coefficeient without duplicated steps.
 ///
 /// ```
-/// use linalg::prelude::binom;
-/// use linalg::prelude::binom_tbl::*;
+/// use linalg::prelude::*;
 ///
 /// // Generates a table that at least holds the values up to binom(4, 4);
-/// let mut table = gen(4, 4);
+/// let mut binomTbl = BinomTbl::new(4, 4);
 ///
 /// // Use constant time operations to get allready caculated values
-/// let binom_3_3 = table[idx(3, 3)];
+/// let binom_3_3 = binomTbl.raw()[BinomTbl::idx(3, 3)];
 /// assert_eq!(binom_3_3, binom(3, 3));
 ///
 /// // Use expand to increase the table to hold new values (at least (n, n))
 /// let (n, k) = (5, 5);
-/// expand(&mut table, n);
+/// binomTbl.expand(n);
 ///
-/// let binom_5_5 = table[idx(5, 5)];
+/// let binom_5_5 = binomTbl.raw()[BinomTbl::idx(5, 5)];
 /// assert_eq!(binom_5_5, binom(5, 5));
 ///
 /// // Use getter to automaticly expand if nessecary
-/// let binom_6_6 = get(&mut table, 6, 6);
+/// let binom_6_6 = binomTbl.get(6, 6);
 /// assert_eq!(binom_6_6, binom(6, 6));
 /// ```
-pub mod binom_tbl {
+pub struct BinomTbl {
+    /// The table to store the already computed values
+    table: Vec<usize>,
+}
+
+impl BinomTbl {
+    /// Return a reference to the raw table.
+    #[inline]
+    pub fn raw(&self) -> &Vec<usize> {
+        &self.table
+    }
+
     ///
     /// Generates a recursiv table to calculate binomial coefficents.
     ///
     /// Note thath this function will compute all values up to (n_cap, k_cap)
     /// meaning all values with n < n_cap and all values with n == n_cap and k <= k_cap.
     ///
-    pub fn gen(n_cap: usize, k_cap: usize) -> Vec<usize> {
+    pub fn new(n_cap: usize, k_cap: usize) -> Self {
         // This function will generate a vec to be interprerted row-major
         // with truncated rows where row i has i+1 elements
 
@@ -200,22 +210,22 @@ pub mod binom_tbl {
         let upper_triag: usize = (1..=n_cap).sum();
         let size = tb_size - upper_triag - (n_cap - k_cap);
 
-        let mut result = Vec::with_capacity(size);
+        let mut table = Vec::with_capacity(size);
 
         for i in 0..=n_cap {
-            result.push(1);
+            table.push(1);
             for j in 1..=i {
                 if j == i {
-                    result.push(1)
+                    table.push(1)
                 } else {
                     // (i, j) = (i-1, j-1) + (i-1, j)
-                    let idx = result.len() - i;
-                    result.push(result[idx - 1] + result[idx]);
+                    let idx = table.len() - i;
+                    table.push(table[idx - 1] + table[idx]);
                 }
             }
         }
 
-        result
+        Self { table }
     }
 
     ///
@@ -224,14 +234,14 @@ pub mod binom_tbl {
     /// This function either extracts the allready cacluated value from the table
     /// or expands the table until it holds the searched value.
     ///
-    pub fn get(table: &mut Vec<usize>, n: usize, k: usize) -> usize {
+    pub fn get(&mut self, n: usize, k: usize) -> usize {
         assert!(k <= n);
-        let idx = idx(n, k);
+        let idx = Self::idx(n, k);
 
-        if idx >= table.len() {
-            expand(table, n)
+        if idx >= self.table.len() {
+            self.expand(n)
         }
-        table[idx]
+        self.table[idx]
     }
 
     ///
@@ -247,8 +257,8 @@ pub mod binom_tbl {
     /// Caculates the current capacity (thus all calculated values) of
     /// a given table.
     ///
-    pub fn cap(table: &Vec<usize>) -> (usize, usize) {
-        let mut k_cap = table.len();
+    pub fn cap(&self) -> (usize, usize) {
+        let mut k_cap = self.table.len();
         let mut n_cap = 1;
         while k_cap > n_cap {
             k_cap -= n_cap;
@@ -264,28 +274,28 @@ pub mod binom_tbl {
     ///
     /// Expands the table to contain values up to (n, n).
     ///
-    pub fn expand(table: &mut Vec<usize>, n: usize) {
+    pub fn expand(&mut self, n: usize) {
         // extract n_cap, j_cap to append
-        let (n_cap, k_cap) = cap(table);
+        let (n_cap, k_cap) = self.cap();
 
         // fill up current row
         for j in k_cap..n_cap {
             if n_cap == j + 1 {
-                table.push(1)
+                self.table.push(1)
             } else {
-                let idx = table.len() - n_cap;
-                table.push(table[idx - 1] + table[idx]);
+                let idx = self.table.len() - n_cap;
+                self.table.push(self.table[idx - 1] + self.table[idx]);
             }
         }
 
         for i in (n_cap + 1)..=n {
-            table.push(1);
+            self.table.push(1);
             for j in 1..=i {
                 if i == j {
-                    table.push(1)
+                    self.table.push(1)
                 } else {
-                    let idx = table.len() - i;
-                    table.push(table[idx - 1] + table[idx]);
+                    let idx = self.table.len() - i;
+                    self.table.push(self.table[idx - 1] + self.table[idx]);
                 }
             }
         }
@@ -362,32 +372,42 @@ pub fn stirling1(n: usize, k: usize) -> usize {
 /// to caculate the next instances without duplicated steps.
 ///
 /// ```
-/// use linalg::prelude::stirling1;
-/// use linalg::prelude::stirling1_tbl::*;
+/// use linalg::prelude::*;
 ///
 /// // Generates a table that at least holds the values up to stirling1(4, 4);
-/// let mut table = gen(4, 4);
+/// let mut table = Stirling1Tbl::new(4, 4);
 ///
 /// // Use constant time operations to get allready caculated values
-/// let stir1_3_3 = table[idx(3, 3)];
+/// let stir1_3_3 = table.raw()[Stirling1Tbl::idx(3, 3)];
 /// assert_eq!(stir1_3_3, stirling1(3, 3));
 ///
 /// // Use expand to increase the table to hold new values (at least (n, n))
 /// let (n, k) = (5, 5);
-/// expand(&mut table, n);
+/// table.expand(n);
 ///
-/// let stir1_5_5 = table[idx(n, k)];
+/// let stir1_5_5 = table.raw()[Stirling1Tbl::idx(n, k)];
 /// assert_eq!(stir1_5_5, stirling1(n, k));
 ///
 /// // Use getter to automaticly expand if nessecary
-/// let stir1_6_6 = get(&mut table, 6, 6);
+/// let stir1_6_6 = table.get(6, 6);
 /// assert_eq!(stir1_6_6, stirling1(6, 6));
 /// ```
-pub mod stirling1_tbl {
+pub struct Stirling1Tbl {
+    /// The table that stores intermediary values.
+    table: Vec<usize>,
+}
+
+impl Stirling1Tbl {
+    /// Returns a reference to the raw table.
+    #[inline(always)]
+    pub fn raw(&self) -> &Vec<usize> {
+        &self.table
+    }
+
     ///
     /// Generates a new stirling(1) table containing all values up to (n_cap, k_cap).
     ///
-    pub fn gen(n_cap: usize, k_cap: usize) -> Vec<usize> {
+    pub fn new(n_cap: usize, k_cap: usize) -> Self {
         // This function will generate a vec to be interprerted row-major
         // with truncated rows where row i has i+1 elements
 
@@ -397,23 +417,23 @@ pub mod stirling1_tbl {
         let upper_triag: usize = (1..=n_cap).sum();
         let size = tb_size - upper_triag - (n_cap - k_cap);
 
-        let mut result = Vec::with_capacity(size);
+        let mut table = Vec::with_capacity(size);
 
-        result.push(1);
+        table.push(1);
         for i in 1..=n_cap {
-            result.push(0);
+            table.push(0);
             for j in 1..=i {
                 if j == i {
-                    result.push(1)
+                    table.push(1)
                 } else {
                     // (i, j) = (i-1, j-1) + (i-1, j)
-                    let idx = result.len() - i;
-                    result.push(result[idx - 1] + result[idx] * (i - 1));
+                    let idx = table.len() - i;
+                    table.push(table[idx - 1] + table[idx] * (i - 1));
                 }
             }
         }
 
-        result
+        Self { table }
     }
 
     ///
@@ -422,14 +442,14 @@ pub mod stirling1_tbl {
     /// This function either extracts the allready cacluated value from the table
     /// or expands the table until it holds the searched value.
     ///
-    pub fn get(table: &mut Vec<usize>, n: usize, k: usize) -> usize {
+    pub fn get(&mut self, n: usize, k: usize) -> usize {
         assert!(k <= n);
-        let idx = idx(n, k);
+        let idx = Self::idx(n, k);
 
-        if idx >= table.len() {
-            expand(table, n)
+        if idx >= self.table.len() {
+            self.expand(n)
         }
-        table[idx]
+        self.table[idx]
     }
 
     ///
@@ -445,8 +465,8 @@ pub mod stirling1_tbl {
     /// Caculates the current capacity (thus all calculated values) of
     /// a given table.
     ///
-    pub fn cap(table: &Vec<usize>) -> (usize, usize) {
-        let mut k_cap = table.len();
+    pub fn cap(&self) -> (usize, usize) {
+        let mut k_cap = self.table.len();
         let mut n_cap = 1;
         while k_cap > n_cap {
             k_cap -= n_cap;
@@ -462,28 +482,30 @@ pub mod stirling1_tbl {
     ///
     /// Expands the table to contain values up to (n, n).
     ///
-    pub fn expand(table: &mut Vec<usize>, n: usize) {
+    pub fn expand(&mut self, n: usize) {
         // extract n_cap, j_cap to append
-        let (n_cap, k_cap) = cap(table);
+        let (n_cap, k_cap) = self.cap();
 
         // fill up current row
         for j in k_cap..n_cap {
             if n_cap == j + 1 {
-                table.push(1)
+                self.table.push(1)
             } else {
-                let idx = table.len() - n_cap;
-                table.push(table[idx - 1] + table[idx] * (n_cap - 1));
+                let idx = self.table.len() - n_cap;
+                self.table
+                    .push(self.table[idx - 1] + self.table[idx] * (n_cap - 1));
             }
         }
 
         for i in (n_cap + 1)..=n {
-            table.push(0);
+            self.table.push(0);
             for j in 1..=i {
                 if i == j {
-                    table.push(1)
+                    self.table.push(1)
                 } else {
-                    let idx = table.len() - i;
-                    table.push(table[idx - 1] + table[idx] * (i - 1));
+                    let idx = self.table.len() - i;
+                    self.table
+                        .push(self.table[idx - 1] + self.table[idx] * (i - 1));
                 }
             }
         }
@@ -560,32 +582,41 @@ pub fn stirling2(n: usize, k: usize) -> usize {
 /// to caculate the next instances without duplicated steps.
 ///
 /// ```
-/// use linalg::prelude::stirling2;
-/// use linalg::prelude::stirling2_tbl::*;
+/// use linalg::prelude::*;
 ///
 /// // Generates a table that at least holds the values up to stirling1(4, 4);
-/// let mut table = gen(4, 4);
+/// let mut table = Stirling2Tbl::new(4, 4);
 ///
 /// // Use constant time operations to get allready caculated values
-/// let stir2_3_3 = table[idx(3, 3)];
+/// let stir2_3_3 = table.raw()[Stirling2Tbl::idx(3, 3)];
 /// assert_eq!(stir2_3_3, stirling2(3, 3));
 ///
 /// // Use expand to increase the table to hold new values (at least (n, n))
 /// let (n, k) = (5, 5);
-/// expand(&mut table, n);
+/// table.expand(n);
 ///
-/// let stir2_5_5 = table[idx(n, k)];
+/// let stir2_5_5 = table.raw()[Stirling2Tbl::idx(n, k)];
 /// assert_eq!(stir2_5_5, stirling2(n, k));
 ///
 /// // Use getter to automaticly expand if nessecary
-/// let stir2_6_6 = get(&mut table, 6, 6);
+/// let stir2_6_6 = table.get(6, 6);
 /// assert_eq!(stir2_6_6, stirling2(6, 6));
 /// ```
-pub mod stirling2_tbl {
+pub struct Stirling2Tbl {
+    table: Vec<usize>,
+}
+
+impl Stirling2Tbl {
+    /// Returns a refrence to the raw table
+    #[inline(always)]
+    pub fn raw(&self) -> &Vec<usize> {
+        &self.table
+    }
+
     ///
     /// Generates a new table containing stirling(2) values up to (n_cap, k_cap).
     ///
-    pub fn gen(n_cap: usize, k_cap: usize) -> Vec<usize> {
+    pub fn new(n_cap: usize, k_cap: usize) -> Self {
         // This function will generate a vec to be interprerted row-major
         // with truncated rows where row i has i+1 elements
 
@@ -595,23 +626,23 @@ pub mod stirling2_tbl {
         let upper_triag: usize = (1..=n_cap).sum();
         let size = tb_size - upper_triag - (n_cap - k_cap);
 
-        let mut result = Vec::with_capacity(size);
+        let mut table = Vec::with_capacity(size);
 
-        result.push(1);
+        table.push(1);
         for i in 1..=n_cap {
-            result.push(0);
+            table.push(0);
             for j in 1..=i {
                 if j == i {
-                    result.push(1)
+                    table.push(1)
                 } else {
                     // (i, j) = (i-1, j-1) + (i-1, j)
-                    let idx = result.len() - i;
-                    result.push(result[idx - 1] + result[idx] * j);
+                    let idx = table.len() - i;
+                    table.push(table[idx - 1] + table[idx] * j);
                 }
             }
         }
 
-        result
+        Self { table }
     }
 
     ///
@@ -620,14 +651,14 @@ pub mod stirling2_tbl {
     /// This function either extracts the allready cacluated value from the table
     /// or expands the table until it holds the searched value.
     ///
-    pub fn get(table: &mut Vec<usize>, n: usize, k: usize) -> usize {
+    pub fn get(&mut self, n: usize, k: usize) -> usize {
         assert!(k <= n);
-        let idx = idx(n, k);
+        let idx = Self::idx(n, k);
 
-        if idx >= table.len() {
-            expand(table, n)
+        if idx >= self.table.len() {
+            self.expand(n)
         }
-        table[idx]
+        self.table[idx]
     }
 
     ///
@@ -643,8 +674,8 @@ pub mod stirling2_tbl {
     /// Caculates the current capacity (thus all calculated values) of
     /// a given table.
     ///
-    pub fn cap(table: &Vec<usize>) -> (usize, usize) {
-        let mut k_cap = table.len();
+    pub fn cap(&self) -> (usize, usize) {
+        let mut k_cap = self.table.len();
         let mut n_cap = 1;
         while k_cap > n_cap {
             k_cap -= n_cap;
@@ -660,28 +691,29 @@ pub mod stirling2_tbl {
     ///
     /// Expands the table to contain values up to (n, n)
     ///
-    pub fn expand(table: &mut Vec<usize>, n: usize) {
+    pub fn expand(&mut self, n: usize) {
         // extract n_cap, j_cap to append
-        let (n_cap, k_cap) = cap(table);
+        let (n_cap, k_cap) = self.cap();
 
         // fill up current row
         for j in k_cap..n_cap {
             if n_cap == j + 1 {
-                table.push(1)
+                self.table.push(1)
             } else {
-                let idx = table.len() - n_cap;
-                table.push(table[idx - 1] + table[idx] * (j + 1));
+                let idx = self.table.len() - n_cap;
+                self.table
+                    .push(self.table[idx - 1] + self.table[idx] * (j + 1));
             }
         }
 
         for i in (n_cap + 1)..=n {
-            table.push(0);
+            self.table.push(0);
             for j in 1..=i {
                 if i == j {
-                    table.push(1)
+                    self.table.push(1)
                 } else {
-                    let idx = table.len() - i;
-                    table.push(table[idx - 1] + table[idx] * j);
+                    let idx = self.table.len() - i;
+                    self.table.push(self.table[idx - 1] + self.table[idx] * j);
                 }
             }
         }
