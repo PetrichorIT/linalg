@@ -10,6 +10,7 @@ pub use crate::core::MatrixLayout;
 /// # Discret mathematics functions
 pub use crate::discret::bell;
 pub use crate::discret::binom;
+pub use crate::discret::binomf;
 pub use crate::discret::fac;
 pub use crate::discret::permut_of_type;
 pub use crate::discret::prt_over;
