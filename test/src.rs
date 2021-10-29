@@ -1,10 +1,10 @@
-use linalg::discret::{binom, BinomTbl};
+use linalg::prelude::{stirling1, Stirling1Tbl};
 use random::Source;
 use std::time::Instant;
 
 fn main() {
     let n = 10_000_0;
-    let upper_bound = 50;
+    let upper_bound = 20;
 
     type T = usize;
 
@@ -18,12 +18,12 @@ fn main() {
         nums.push((r0.max(r1), r1.min(r0)));
     }
 
-    let mut tbl = BinomTbl::new(1);
-
     let t1 = Instant::now();
 
+    let mut tbl = Stirling1Tbl::new(1);
+
     for &(n, k) in &nums {
-        let _ = binom(n, k);
+        let _ = stirling1(n, k);
     }
 
     let t2 = Instant::now();

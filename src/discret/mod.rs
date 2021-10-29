@@ -1,5 +1,7 @@
 //! A collection of function usfull for discrete mathematics.
 
+use std::fmt::Display;
+
 use num_traits::{Num, Zero};
 
 mod tests;
@@ -114,183 +116,17 @@ pub fn permut_of_type(typ: &[(usize, usize)]) -> usize {
 /// assert_eq!(b, 6);
 /// ```
 ///
-pub fn binom(n: usize, k: usize) -> usize {
+pub fn binom(n: usize, mut k: usize) -> usize {
     assert!(k <= n);
-    // There is a pascal-triag of size NxN
-    // The only relevant parts of this triag are above and diagonal-left-up
-    // from the anchor point (n, k)
-    // that means there are n - k element per col
-    // => k*d relevant cells
-
-    if k.is_zero() {
-        return 1;
+    if 2 * k > n {
+        k = n - k;
     }
 
-    let d: usize = (n - k) + 1;
-    if d.is_zero() {
-        return 1;
+    let mut res = 1;
+    for i in 1..=k {
+        res *= (n + 1 - i) / i
     }
-
-    let k: usize = k;
-    let size: usize = d * (k + 1);
-    let mut table = Vec::with_capacity(size);
-
-    // fill first col
-    for _ in 0..d {
-        table.push(1);
-    }
-
-    // iterate
-    for j in 1..=k {
-        // there are allways d cells
-        let offset = d * j;
-        // Set diag elements
-        table.push(1);
-        for i in 1..d {
-            table.push(table[offset + i - 1] + table[offset - d + i]);
-        }
-    }
-
-    table[size - 1]
-}
-
-///
-/// This function calculates the binomalial coefficent.
-///
-/// # Safty
-///
-/// Note that this function calculates the binomial coefficent
-/// using the facultiv definition and is thus faster to calculated,
-/// but numericly more unstable. This means that for n >> 20 [usize] will overflow.
-///
-/// ```should_panic
-/// use linalg::prelude::binomf;
-///
-/// let b = binomf(40, 18);
-/// ```
-///
-#[inline]
-pub fn binomf(n: usize, k: usize) -> usize {
-    prt_under(n, k) / fac(k)
-}
-
-///
-/// A toolset to caculate mutiple bionomial coefficeients efficently
-///
-/// This module provides the functionallity to caculate binomial coefficents,
-/// and memorize the recursive steps, to reuse those steps (saved as a table)
-/// to caculate the next coefficeient without duplicated steps.
-///
-/// ```
-/// use linalg::prelude::*;
-///
-/// // Generates a table that at least holds the values up to binom(4, 4);
-/// let mut binomTbl = BinomTbl::new(4);
-///
-/// // Use constant time operations to get allready caculated values
-/// let binom_3_3 = binomTbl.raw()[BinomTbl::idx(3, 3)];
-/// assert_eq!(binom_3_3, binom(3, 3));
-///
-/// // Use expand to increase the table to hold new values (at least (n, n))
-/// let (n, k) = (5, 5);
-/// binomTbl.expand(n);
-///
-/// let binom_5_5 = binomTbl.raw()[BinomTbl::idx(5, 5)];
-/// assert_eq!(binom_5_5, binom(5, 5));
-///
-/// // Use getter to automaticly expand if nessecary
-/// let binom_6_6 = binomTbl.get(6, 6);
-/// assert_eq!(binom_6_6, binom(6, 6));
-/// ```
-pub struct BinomTbl {
-    /// The table to store the already computed values
-    table: Vec<usize>,
-}
-
-impl BinomTbl {
-    /// Return a reference to the raw table.
-    #[inline]
-    pub fn raw(&self) -> &Vec<usize> {
-        &self.table
-    }
-
-    ///
-    /// Generates a recursiv table to calculate binomial coefficents.
-    ///
-    /// Note thath this function will compute all values up to cap,
-    /// meaning all values with n <= cap.
-    ///
-    pub fn new(cap: usize) -> Self {
-        // This function will generate a vec to be interprerted row-major
-        // with truncated rows where row i has i+1 elements
-        let mut result = Self { table: vec![1] };
-        result.expand(cap);
-        result
-    }
-
-    ///
-    /// Calculates a bionomial coefficent based on the values in the given table.
-    ///
-    /// This function either extracts the allready cacluated value from the table
-    /// or expands the table until it holds the searched value.
-    ///
-    pub fn get(&mut self, n: usize, k: usize) -> usize {
-        assert!(k <= n);
-        let idx = Self::idx(n, k);
-
-        //println!(">> {} = ({}, {})", idx, n, k);
-        if idx >= self.table.len() {
-            self.expand(n)
-        }
-        self.table[idx]
-    }
-
-    ///
-    /// Calculates the index of a entry in the table.
-    ///
-    #[inline(always)]
-    pub fn idx(n: usize, k: usize) -> usize {
-        let n_offset: usize = (1..=n).sum();
-        n_offset + k
-    }
-
-    ///
-    /// Caculates the current capacity (thus all calculated values) of
-    /// a given table.
-    ///
-    pub fn cap(&self) -> usize {
-        if self.table.is_empty() {
-            return 0;
-        }
-        let mut rem = self.table.len();
-        let mut n_cap = 1;
-        while rem > n_cap {
-            rem -= n_cap;
-            n_cap += 1;
-        }
-
-        n_cap - 1
-    }
-
-    ///
-    /// Expands the table to contain values up to (n, n).
-    ///
-    pub fn expand(&mut self, n: usize) {
-        // extract n_cap, j_cap to append
-        let n_cap = self.cap();
-
-        for i in (n_cap + 1)..=n {
-            self.table.push(1);
-            for j in 1..=i {
-                if i == j {
-                    self.table.push(1)
-                } else {
-                    let idx = self.table.len() - i;
-                    self.table.push(self.table[idx - 1] + self.table[idx]);
-                }
-            }
-        }
-    }
+    res
 }
 
 ///
@@ -362,6 +198,8 @@ pub fn stirling1(n: usize, k: usize) -> usize {
 /// and memorize the recursive steps, to reuse those steps (saved as a table)
 /// to caculate the next instances without duplicated steps.
 ///
+/// # Examples
+///
 /// ```
 /// use linalg::prelude::*;
 ///
@@ -383,6 +221,7 @@ pub fn stirling1(n: usize, k: usize) -> usize {
 /// let stir1_6_6 = table.get(6, 6);
 /// assert_eq!(stir1_6_6, stirling1(6, 6));
 /// ```
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Stirling1Tbl {
     /// The table that stores intermediary values.
     table: Vec<usize>,
@@ -412,6 +251,10 @@ impl Stirling1Tbl {
     ///
     /// This function either extracts the allready cacluated value from the table
     /// or expands the table until it holds the searched value.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic should k be greater than n.
     ///
     pub fn get(&mut self, n: usize, k: usize) -> usize {
         assert!(k <= n);
@@ -531,12 +374,20 @@ pub fn stirling2(n: usize, k: usize) -> usize {
     table[size - 1]
 }
 
+impl Display for Stirling1Tbl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Stirling(1)Table {{ cap: {} }}", self.cap())
+    }
+}
+
 ///
 /// A toolset to caculate mutiple stirling(2) numbers efficently
 ///
 /// This module provides the functionallity to caculate stirling(2) coefficents,
 /// and memorize the recursive steps, to reuse those steps (saved as a table)
 /// to caculate the next instances without duplicated steps.
+///
+/// # Examples
 ///
 /// ```
 /// use linalg::prelude::*;
@@ -559,6 +410,7 @@ pub fn stirling2(n: usize, k: usize) -> usize {
 /// let stir2_6_6 = table.get(6, 6);
 /// assert_eq!(stir2_6_6, stirling2(6, 6));
 /// ```
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Stirling2Tbl {
     table: Vec<usize>,
 }
@@ -587,6 +439,10 @@ impl Stirling2Tbl {
     ///
     /// This function either extracts the allready cacluated value from the table
     /// or expands the table until it holds the searched value.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic should k be greater than n.
     ///
     pub fn get(&mut self, n: usize, k: usize) -> usize {
         assert!(k <= n);
@@ -640,6 +496,12 @@ impl Stirling2Tbl {
                 }
             }
         }
+    }
+}
+
+impl Display for Stirling2Tbl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Stirling(2)Table {{ cap: {} }}", self.cap())
     }
 }
 

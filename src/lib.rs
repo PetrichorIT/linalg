@@ -22,22 +22,22 @@ mod tests {
     use crate::lse::inv;
     use crate::lse::tridiag;
     use crate::mat;
-    use crate::prelude::binom;
     use crate::prelude::eig;
-    use crate::prelude::BinomTbl;
+    use crate::prelude::stirling1;
+    use crate::prelude::Stirling1Tbl;
 
     #[test]
     fn it_works() {
         let mut matrix = Matrix::zeroed((7, 7));
         for i in 0..7 {
             for j in 0..=i {
-                matrix[(i, j)] = binom(i, j);
+                matrix[(i, j)] = stirling1(i, j);
             }
         }
 
         println!("{}", matrix);
 
-        let mut buf = BinomTbl::new(3);
+        let mut buf = Stirling1Tbl::new(3);
         for i in 0..7 {
             for j in 0..=i {
                 let res = buf.get(i, j);
