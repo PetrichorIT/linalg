@@ -1,3 +1,5 @@
+use std::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
+
 pub trait NumConstants {
     fn two() -> Self;
     fn eight() -> Self;
@@ -53,3 +55,53 @@ macro_rules! numFractionalConstantsImpl {
 }
 
 numFractionalConstantsImpl!(0.5, 1.0 / 3.0, 0.2, f32, f64);
+
+pub trait ClippableRange<Idx> {
+    fn into_clipped(self, bounds: RangeInclusive<Idx>) -> RangeInclusive<Idx>;
+}
+
+impl ClippableRange<usize> for Range<usize> {
+    fn into_clipped(self, bounds: RangeInclusive<usize>) -> RangeInclusive<usize> {
+        let start = self.start;
+        let end = (self.end - 1).min(*bounds.end());
+        start..=end
+    }
+}
+
+impl ClippableRange<usize> for RangeFrom<usize> {
+    fn into_clipped(self, bounds: RangeInclusive<usize>) -> RangeInclusive<usize> {
+        let start = self.start;
+        let end = *bounds.end();
+        start..=end
+    }
+}
+
+impl ClippableRange<usize> for RangeFull {
+    fn into_clipped(self, bounds: RangeInclusive<usize>) -> RangeInclusive<usize> {
+        bounds.clone()
+    }
+}
+
+impl ClippableRange<usize> for RangeInclusive<usize> {
+    fn into_clipped(self, bounds: RangeInclusive<usize>) -> RangeInclusive<usize> {
+        let start = *self.start().max(bounds.start());
+        let end = *self.end().min(bounds.end());
+        start..=end
+    }
+}
+
+impl ClippableRange<usize> for RangeTo<usize> {
+    fn into_clipped(self, bounds: RangeInclusive<usize>) -> RangeInclusive<usize> {
+        let start = *bounds.start();
+        let end = (self.end - 1).min(*bounds.end());
+        start..=end
+    }
+}
+
+impl ClippableRange<usize> for RangeToInclusive<usize> {
+    fn into_clipped(self, bounds: RangeInclusive<usize>) -> RangeInclusive<usize> {
+        let start = *bounds.start();
+        let end = self.end.min(*bounds.end());
+        start..=end
+    }
+}

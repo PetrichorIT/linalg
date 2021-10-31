@@ -16,11 +16,14 @@ use std::{
     mem::swap,
     ops::{
         Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref,
-        DerefMut, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
+        DerefMut, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeInclusive, Sub,
+        SubAssign,
     },
 };
 
 use num_traits::Num;
+
+use crate::num::ClippableRange;
 
 mod tests;
 
@@ -91,6 +94,10 @@ impl MatrixLayout {
         self.cols == 1 || self.rows == 1
     }
 
+    #[inline]
+    pub fn bounds(&self) -> (RangeInclusive<usize>, RangeInclusive<usize>) {
+        (0..=(self.rows - 1), 0..=(self.cols - 1))
+    }
     ///
     /// A conversion function from a two-dimensional index to a
     /// one-dimensional index for the raw buffer.
@@ -315,6 +322,65 @@ impl<T> Matrix<T> {
     ///
     pub unsafe fn memreset(&mut self) {
         std::ptr::write_bytes(self.raw.as_mut_ptr(), 0, self.raw.len())
+    }
+
+    ///
+    /// Extacts the submatrix constainted by the ranges, and returns
+    /// an out-of-place copy of its elements
+    ///
+    pub fn extract<U, V>(&self, rows: U, cols: V) -> Matrix<T>
+    where
+        T: Copy,
+        U: ClippableRange<usize>,
+        V: ClippableRange<usize>,
+    {
+        let (row_bounds, col_bounds) = self.layout().bounds();
+        let rows = rows.into_clipped(row_bounds);
+        let cols = cols.into_clipped(col_bounds);
+
+        let rc = rows.end() - rows.start() + 1;
+        let cc = cols.end() - cols.start() + 1;
+
+        let mut result = unsafe { Matrix::uninitalized((rc, cc)) };
+        for i in 0..rc {
+            for j in 0..cc {
+                result[(i, j)] = self[(*rows.start() + i, *cols.start() + j)]
+            }
+        }
+
+        result
+    }
+
+    ///
+    /// Inserts elements of a given matrix into the self using the provided
+    /// ranges as anchor point and constrains.
+    ///
+    pub fn insert<U, V>(&mut self, rows: U, cols: V, matrix: &Matrix<T>)
+    where
+        T: Copy,
+        U: ClippableRange<usize>,
+        V: ClippableRange<usize>,
+    {
+        let (row_bounds, col_bounds) = self.layout().bounds();
+
+        // Bounds clipped to parent indices
+        let rows = rows.into_clipped(row_bounds);
+        let cols = cols.into_clipped(col_bounds);
+
+        let anchor = (*rows.start(), *cols.start());
+
+        // Reduce bounds to fit matrix
+        let rows = rows.into_clipped(anchor.0..=(anchor.0 + matrix.layout().rows() - 1));
+        let cols = cols.into_clipped(anchor.1..=(anchor.1 + matrix.layout().cols() - 1));
+
+        let rc = rows.end() - rows.start() + 1;
+        let cc = cols.end() - cols.start() + 1;
+
+        for i in 0..rc {
+            for j in 0..cc {
+                self[(*rows.start() + i, *cols.start() + j)] = matrix[(i, j)]
+            }
+        }
     }
 }
 
@@ -688,7 +754,7 @@ impl<T: Num> IntoIterator for Matrix<T> {
     }
 }
 
-impl<T: Num> Deref for Matrix<T> {
+impl<T> Deref for Matrix<T> {
     type Target = [T];
 
     fn deref(&self) -> &Self::Target {
@@ -696,7 +762,7 @@ impl<T: Num> Deref for Matrix<T> {
     }
 }
 
-impl<T: Num> Index<usize> for Matrix<T> {
+impl<T> Index<usize> for Matrix<T> {
     type Output = T;
 
     #[inline(always)]
@@ -705,20 +771,20 @@ impl<T: Num> Index<usize> for Matrix<T> {
     }
 }
 
-impl<T: Num> IndexMut<usize> for Matrix<T> {
+impl<T> IndexMut<usize> for Matrix<T> {
     #[inline(always)]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.raw[index]
     }
 }
 
-impl<T: Num> DerefMut for Matrix<T> {
+impl<T> DerefMut for Matrix<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.raw.deref_mut()
     }
 }
 
-impl<T: Num> Index<(usize, usize)> for Matrix<T> {
+impl<T> Index<(usize, usize)> for Matrix<T> {
     type Output = T;
 
     #[inline(always)]
@@ -727,14 +793,14 @@ impl<T: Num> Index<(usize, usize)> for Matrix<T> {
     }
 }
 
-impl<T: Num> IndexMut<(usize, usize)> for Matrix<T> {
+impl<T> IndexMut<(usize, usize)> for Matrix<T> {
     #[inline(always)]
     fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
         &mut self.raw[self.layout.index(index)]
     }
 }
 
-impl<T: Num> PartialEq for Matrix<T>
+impl<T> PartialEq for Matrix<T>
 where
     T: PartialEq,
 {
@@ -1255,17 +1321,6 @@ where
     }
 }
 
-impl<T: Num> Div<T> for Matrix<T>
-where
-    T: Mul + Copy,
-{
-    type Output = Matrix<<T as Div>::Output>;
-    fn div(mut self, rhs: T) -> Self::Output {
-        self.scale(T::one() / rhs);
-        self
-    }
-}
-
 impl<T: Num> Matrix<T>
 where
     T: Mul<Output = T> + Copy,
@@ -1303,12 +1358,84 @@ where
     }
 }
 
+impl<T: Num> Matrix<T>
+where
+    T: Copy + Div,
+{
+    ///
+    /// Performs a scalar multiplication with the given scalar
+    /// returning a new matrix as result.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg::prelude::*;
+    ///
+    /// let matrix = Matrix::diag(vec![2, 4, 6]);
+    /// let half = matrix.scalar_div(2);
+    /// assert!(matrix.layout() == half.layout());
+    /// assert!(matrix[(0, 0)] / 2 == half[(0, 0)]);
+    /// assert!(matrix[(2, 0)] / 2 == half[(2, 0)]);
+    /// ```
+    ///
+    pub fn scalar_div(&self, divider: T) -> Matrix<<T as Div>::Output> {
+        // SAFTY:
+        // Matix is identical in layout, so all cells will be filled,
+        // cause iteration over raw values
+        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
+        for k in 0..self.layout.size() {
+            result.raw[k] = self.raw[k] / divider;
+        }
+
+        result
+    }
+}
+
+impl<T: Num> Div<T> for Matrix<T>
+where
+    T: Div + Copy,
+{
+    type Output = Matrix<<T as Div>::Output>;
+    fn div(mut self, rhs: T) -> Self::Output {
+        self.scale_div(rhs);
+        self
+    }
+}
+
+impl<T: Num> Matrix<T>
+where
+    T: Mul<Output = T> + Copy,
+{
+    ///
+    /// Performs a scalar multiplication in-place with all elements of
+    /// the given matrix.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use linalg::prelude::*;
+    ///
+    /// let matrix = Matrix::diag(vec![2, 4, 6]);
+    /// let mut half = matrix.clone();
+    /// half.scale_div(2);
+    /// assert_eq!(*matrix.layout(), *half.layout());
+    /// assert_eq!(matrix[(0, 0)] / 2, half[(0, 0)]);
+    /// assert_eq!(matrix[(2, 0)] / 2, half[(2, 0)]);
+    /// ```
+    ///
+    pub fn scale_div(&mut self, scalar: T) {
+        for k in 0..self.layout.size() {
+            self.raw[k] = self.raw[k] / scalar;
+        }
+    }
+}
+
 impl<T: Num> DivAssign<T> for Matrix<T>
 where
     T: Div<Output = T> + Copy,
 {
     fn div_assign(&mut self, rhs: T) {
-        self.scale(T::one() / rhs)
+        self.scale_div(rhs)
     }
 }
 

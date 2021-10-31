@@ -4,8 +4,8 @@
 pub use crate::matrix;
 
 /// # Matrix Core
-pub use crate::core::Matrix;
-pub use crate::core::MatrixLayout;
+pub use crate::matrix::Matrix;
+pub use crate::matrix::MatrixLayout;
 
 /// # Discret mathematics functions
 pub use crate::discret::bell;

@@ -432,3 +432,97 @@ fn matrix_neg() {
     let new_m = (&n).neg();
     assert_eq!(m, new_m);
 }
+
+#[test]
+fn matrix_extract() {
+    let m = mat![
+        1, 2, 3, 4, 5;
+        2, 3, 4, 5, 6;
+        3, 4, 5, 6, 7;
+        4, 5, 6, 7, 8;
+        5, 6, 7, 8, 9;
+    ];
+
+    let sb = m.extract(2.., 3..);
+    assert_eq!(
+        sb,
+        mat![
+            6, 7;
+            7, 8;
+            8, 9;
+        ]
+    );
+
+    let sb = m.extract(3.., ..);
+    assert_eq!(
+        sb,
+        mat![
+            4, 5, 6, 7, 8;
+            5, 6, 7, 8, 9;
+        ]
+    );
+
+    let sb = m.extract(3.., ..=2);
+    assert_eq!(
+        sb,
+        mat![
+            4, 5, 6;
+            5, 6, 7;
+        ]
+    );
+
+    let sb = m.extract(..3, 0..=2);
+    assert_eq!(
+        sb,
+        mat![
+            1, 2, 3;
+            2, 3, 4;
+            3, 4, 5;
+        ]
+    );
+}
+
+#[test]
+fn matrix_insert() {
+    let mut matrix = Matrix::zeroed((5, 5));
+
+    let mut insert = Matrix::fill((3, 3), 8);
+
+    matrix.insert(2.., 2.., &insert);
+    assert_eq!(
+        matrix,
+        mat![
+            0, 0, 0, 0, 0;
+            0, 0, 0, 0, 0;
+            0, 0, 8, 8, 8;
+            0, 0, 8, 8, 8;
+            0, 0, 8, 8, 8;
+        ]
+    );
+
+    insert *= 2;
+
+    matrix.insert(0..=1, 0.., &insert);
+    assert_eq!(
+        matrix,
+        mat![
+            16, 16, 16, 0, 0;
+            16, 16, 16, 0, 0;
+            0, 0, 8, 8, 8;
+            0, 0, 8, 8, 8;
+            0, 0, 8, 8, 8;
+        ]
+    );
+
+    matrix.insert(3.., 3.., &insert);
+    assert_eq!(
+        matrix,
+        mat![
+            16, 16, 16, 0, 0;
+            16, 16, 16, 0, 0;
+            0, 0, 8, 8, 8;
+            0, 0, 8, 16, 16;
+            0, 0, 8, 16, 16;
+        ]
+    );
+}

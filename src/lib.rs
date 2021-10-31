@@ -1,10 +1,10 @@
 mod marco;
 mod num;
 
-pub mod core;
 pub mod discret;
 pub mod lop;
 pub mod lse;
+pub mod matrix;
 pub mod poly;
 pub mod prelude;
 
@@ -16,35 +16,31 @@ pub type c64 = num_complex::Complex64;
 #[cfg(test)]
 mod tests {
 
-    use crate::core::*;
     use crate::lop::LOPOptions;
     use crate::lop::LOP;
     use crate::lse::inv;
     use crate::lse::tridiag;
     use crate::mat;
+    use crate::matrix::*;
+    use crate::prelude::binom;
     use crate::prelude::eig;
-    use crate::prelude::stirling1;
-    use crate::prelude::Stirling1Tbl;
 
     #[test]
     fn it_works() {
         let mut matrix = Matrix::zeroed((7, 7));
         for i in 0..7 {
             for j in 0..=i {
-                matrix[(i, j)] = stirling1(i, j);
+                matrix[(i, j)] = binom(i, j);
             }
         }
 
         println!("{}", matrix);
 
-        let mut buf = Stirling1Tbl::new(3);
-        for i in 0..7 {
-            for j in 0..=i {
-                let res = buf.get(i, j);
-                print!("{} ", res);
-            }
-            println!()
-        }
+        let mt = Matrix::fill((4, 4), 9);
+
+        matrix.insert(2..=3, 2.., &mt);
+
+        println!("{}", matrix);
     }
 
     #[test]

@@ -23,7 +23,7 @@ use std::{fmt::Display, mem::swap, ops::AddAssign};
 
 use num_traits::{Float, Num};
 
-use crate::core::{Matrix, MatrixLayout};
+use crate::matrix::{Matrix, MatrixLayout};
 
 // min c^T*x + l with a_eq*x=b_eq and a*x <= b
 
@@ -688,7 +688,7 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::{core::*, lop::*};
+    use crate::{lop::*, matrix::*};
 
     #[test]
     fn test_builder() {

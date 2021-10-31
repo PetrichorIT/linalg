@@ -3,7 +3,7 @@
 //!
 
 use crate::{
-    core::{Matrix, MatrixLayout},
+    matrix::{Matrix, MatrixLayout},
     num::{NumConstants, NumFractionalConstants},
 };
 use num_traits::{Float, Num};
