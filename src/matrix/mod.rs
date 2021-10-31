@@ -409,7 +409,7 @@ where
     /// This function will panic if applied to matrices of size 0.
     ///
     /// ```should_panic
-    /// use linalg::{matrix, core::Matrix};
+    /// use linalg::{matrix, matrix::Matrix};
     ///
     /// let m: Matrix<usize> = matrix![];
     ///
@@ -1138,7 +1138,7 @@ where
             str.push('\n');
         }
 
-        str.push_str("}}");
+        str.push_str("}");
 
         write!(f, "{}", str)
     }

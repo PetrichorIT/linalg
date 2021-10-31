@@ -33,7 +33,7 @@ macro_rules! matrix {
 
     () => (
         {
-            use linalg::core::{MatrixLayout, Matrix};
+            use linalg::matrix::{MatrixLayout, Matrix};
             Matrix::new(MatrixLayout::new(0, 0), Vec::new())
         }
     );
@@ -42,12 +42,12 @@ macro_rules! matrix {
         {
             let buffer = vec![$($b,)* $($item,)*];
 
-            use linalg::core::MatrixLayout;
+            use linalg::matrix::MatrixLayout;
             let rows = $c + 1;
             let cols = buffer.len() / rows;
             let layout = MatrixLayout::new(rows, cols);
 
-            use linalg::core::Matrix;
+            use linalg::matrix::Matrix;
             Matrix::new(layout, buffer)
         }
     );
@@ -70,7 +70,7 @@ macro_rules! mat {
 
     () => (
         {
-            use crate::core::{MatrixLayout, Matrix};
+            use crate::matrix::{MatrixLayout, Matrix};
             Matrix::new(MatrixLayout::new(0, 0), Vec::new())
         }
     );

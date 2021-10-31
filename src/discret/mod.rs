@@ -123,8 +123,8 @@ pub fn binom(n: usize, mut k: usize) -> usize {
     }
 
     let mut res = 1;
-    for i in 1..=k {
-        res *= (n + 1 - i) / i
+    for i in 0..k {
+        res = (res * (n - i)) / (i + 1);
     }
     res
 }
