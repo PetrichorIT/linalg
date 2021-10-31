@@ -150,6 +150,7 @@ pub fn binom(n: usize, mut k: usize) -> usize {
 /// assert_eq!(s1, 6);
 /// ```
 ///
+#[allow(clippy::same_item_push)]
 pub fn stirling1(n: usize, k: usize) -> usize {
     assert!(k <= n);
     // There is a pascal-triag of size NxN
@@ -333,7 +334,8 @@ impl Stirling1Tbl {
 /// // {(1, 2), (3)}, {(1, 3), (2)}, {(2, 3), (1)}
 /// assert_eq!(s2, 3);
 /// ```
-///  
+///
+#[allow(clippy::same_item_push)]
 pub fn stirling2(n: usize, k: usize) -> usize {
     assert!(k <= n);
     // There is a pascal-triag of size NxN
@@ -511,7 +513,7 @@ impl Display for Stirling2Tbl {
 pub fn bell(n: usize) -> usize {
     let mut result = 0;
     for k in 0..=n {
-        result = result + stirling2(n, k)
+        result += stirling2(n, k)
     }
     result
 }

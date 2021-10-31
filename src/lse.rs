@@ -253,7 +253,7 @@ where
         // preinit to prevent borrowing issues
         let mut x = Matrix::zeroed(b.layout().clone());
 
-        let y = Matrix::mmul(&self.q, &b);
+        let y = Matrix::mmul(&self.q, b);
 
         for i in (0..self.r.layout().rows()).rev() {
             let mut s = T::zero();

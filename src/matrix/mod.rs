@@ -45,7 +45,7 @@ mod tests;
 /// assert!(matrix[(0, 0)] == 0usize);
 /// ```
 ///
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct MatrixLayout {
     rows: usize,
     cols: usize,
@@ -160,7 +160,7 @@ impl MatrixLayout {
     /// assert!(layout.unwrap() == MatrixLayout::new(2, 3));
     /// ```
     ///
-    pub fn assumed_from<T>(structured: &Vec<Vec<T>>) -> Result<Self, &'static str> {
+    pub fn assumed_from<T>(structured: &[Vec<T>]) -> Result<Self, &'static str> {
         let rows = structured.len();
         if rows == 0 {
             return Ok(MatrixLayout { rows: 0, cols: 0 });
@@ -169,7 +169,7 @@ impl MatrixLayout {
         let cols = structured.first().unwrap().len();
         for row in structured.iter().skip(1) {
             if row.len() != cols {
-                return Err(&"Structured data has irregulare format");
+                return Err("Structured data has irregulare format");
             }
         }
 
@@ -183,12 +183,6 @@ impl MatrixLayout {
             rows: size,
             cols: size,
         }
-    }
-}
-
-impl Default for MatrixLayout {
-    fn default() -> Self {
-        Self { rows: 0, cols: 0 }
     }
 }
 
@@ -291,7 +285,7 @@ impl<T> Matrix<T> {
     /// Creates a new matrix with an allocated but uninialized
     /// memory buffer.
     ///
-    /// # Safty
+    /// # Safety
     ///
     /// Ensure that all cells of the allocated buffer (self.raw().len())
     /// are either filled with valid instances of the given type,
@@ -315,7 +309,7 @@ impl<T> Matrix<T> {
     ///
     /// Resets all allocated memory to zero bytes.
     ///
-    /// # Safty
+    /// # Safety
     ///
     /// This should only be done if zero-memory produces valid instances of type T
     /// or matrix will be reinitalized fully afterwards.
@@ -723,9 +717,9 @@ impl<T> From<Vec<T>> for Matrix<T> {
     }
 }
 
-impl<T> Into<Vec<T>> for Matrix<T> {
-    fn into(self) -> Vec<T> {
-        self.raw
+impl<T> From<Matrix<T>> for Vec<T> {
+    fn from(matrix: Matrix<T>) -> Self {
+        matrix.raw
     }
 }
 
@@ -873,7 +867,7 @@ where
             }
         }
 
-        return true;
+        true
     }
 
     fn le(&self, other: &Self) -> bool {
@@ -886,7 +880,7 @@ where
             }
         }
 
-        return true;
+        true
     }
 
     fn gt(&self, other: &Self) -> bool {
@@ -899,7 +893,7 @@ where
             }
         }
 
-        return true;
+        true
     }
 
     fn ge(&self, other: &Self) -> bool {
@@ -912,7 +906,7 @@ where
             }
         }
 
-        return true;
+        true
     }
 }
 
@@ -1529,7 +1523,7 @@ where
     type Output = Matrix<T>;
 
     fn mul(self, rhs: &Matrix<T>) -> Self::Output {
-        Matrix::mmul(&self, &rhs)
+        Matrix::mmul(&self, rhs)
     }
 }
 
@@ -1547,7 +1541,7 @@ where
     T: Mul<Output = T> + Add<Output = T> + Copy,
 {
     fn mul_assign(&mut self, rhs: &Matrix<T>) {
-        *self = Matrix::mmul(self, &rhs)
+        *self = Matrix::mmul(self, rhs)
     }
 }
 

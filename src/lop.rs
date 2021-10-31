@@ -19,7 +19,11 @@
 //! are exceeded.
 //!
 
-use std::{fmt::Display, mem::swap, ops::AddAssign};
+use std::{
+    fmt::Display,
+    mem::swap,
+    ops::{AddAssign, Neg},
+};
 
 use num_traits::{Float, Num};
 
@@ -122,7 +126,7 @@ impl<T: Float> LinearOpimizationProblem<T> {
 
 impl<T> LinearOpimizationProblem<T>
 where
-    T: Float + AddAssign,
+    T: Float + AddAssign + Neg + Display,
 {
     ///
     /// Tries to solve the linear optimization problem using the default
@@ -159,65 +163,36 @@ where
         let number_of_vars = n + self.a.layout().rows() + self.a_eq.layout().rows();
         let number_of_eq = self.a.layout().rows() + self.a_eq.layout().rows();
 
-        let mut increments = Vec::new();
+        let mut increments = Vec::<LOPIncrement<T>>::new();
 
         // SAFTY:
         // All positions in the given matrix will be filled in the following
         // steps without using the matrix values as getter
         let layout = MatrixLayout::new(number_of_eq + 2, n + 1);
-        let mut mat = unsafe { Matrix::<T>::uninitalized(layout) };
+        let mut mat = Matrix::<T>::zeroed(layout);
 
         // Fill the Axy=b matrix
         if self.a.layout().rows() != 0 {
-            // Place b at anchor (0, n)
-            for i in 0..self.b.size() {
-                mat[(i, n)] = self.b[i];
-            }
-            // Place a at anchor (0, 0)
-            for i in 0..self.a.layout().rows() {
-                for j in 0..self.a.layout().cols() {
-                    mat[(i, j)] = self.a[(i, j)];
-                }
-            }
+            mat.insert(0.., n.., &self.b);
+            mat.insert(0.., 0.., &self.a);
         }
 
         // Fill A_eqx=b_eq
         if self.a_eq.layout().rows() != 0 {
-            // place b_eq at anchor (b::rows, n)
-            for i in 0..self.b_eq.size() {
-                mat[(self.b.size() + i, n)] = self.b_eq[i];
-            }
-            // place a_eq at anchor (a.rows(), 0)
-            for i in 0..self.a_eq.layout().rows() {
-                for j in 0..self.a_eq.layout().cols() {
-                    mat[(self.a.layout().rows() + i, j)] = self.a_eq[(i, j)];
-                }
-            }
+            mat.insert(self.b.layout().rows().., n.., &self.b_eq);
+            mat.insert(self.b.layout().rows().., 0.., &self.a_eq);
         }
 
-        // Fill c matrix
-        // place c transposed * -1 at anchor (number_of_eq + 1,0)
-        for j in 0..self.c.size() {
-            mat[(number_of_eq + 1, j)] = self.c[j].neg();
-        }
-
-        // SAFTY:
-        // Concerning matrix only the sum fields are still uninitialized
+        mat.insert((number_of_eq + 1).., 0.., &self.c.transposed().neg());
 
         // Sum up all rows of a_eq
         let mut ch = Matrix::<T>::zeroed(MatrixLayout::new(n + 1, 1));
         for o in self.a.layout().rows()..number_of_eq {
-            for j in 0..mat.layout().cols() {
-                ch[j] += mat[(o, j)];
-            }
+            ch += mat.extract(o..=o, 0..).transposed()
         }
 
         // Fill in ch (transposed) into matrix at anchor (number_of_eq, 0)
-        for j in 0..ch.size() {
-            mat[(number_of_eq, j)] = ch[j];
-        }
-
-        // Prepare base va counters
+        mat.insert(number_of_eq.., 0.., &ch.transposed());
 
         let mut base_vars = Vec::with_capacity(n);
         for i in 1..=n {
@@ -283,7 +258,7 @@ where
             // Got Pivot, Do Iteration
 
             if p1_itr >= options.max_p1_iterations {
-                return Err(&"Exceeded maximum phase one iteration count");
+                return Err("Exceeded maximum phase one iteration count");
             }
             p1_itr += 1;
 
@@ -294,8 +269,8 @@ where
                 increments.push(LOPIncrement {
                     phase: 1,
                     iteration: p1_itr,
-                    pv_row: pv_row,
-                    pv_col: pv_col,
+                    pv_row,
+                    pv_col,
                     base_vars: base_vars.clone(),
                     non_base_vars: non_base_vars.clone(),
                     matrix: mat.clone(),
@@ -336,12 +311,12 @@ where
         }
 
         if mat[(number_of_eq, n)] != T::zero() {
-            return Err(&"Problem is unbound (1)");
+            return Err("Problem is unbound (1)");
         }
 
         let help_var = number_of_vars - self.a_eq.layout().rows() + 1;
         if non_base_vars.iter().fold(0usize, |x, &y| usize::max(x, y)) >= help_var {
-            return Err(&"Problem is unbound (2)");
+            return Err("Problem is unbound (2)");
         }
 
         // Phase 2
@@ -349,7 +324,7 @@ where
         // SAFTY:
         // Will be filled up in the next steps
         let layout = MatrixLayout::new(number_of_eq + 1, n + 1 - self.a_eq.layout().rows());
-        let mut mx = unsafe { Matrix::<T>::uninitalized(layout) };
+        let mut mx = Matrix::<T>::zeroed(layout);
 
         // Copy releveant Colums
         let mut col_idx = 0;
@@ -423,7 +398,7 @@ where
             let pv_row = pv_row.unwrap();
 
             if p2_itr >= options.max_p2_iterations {
-                return Err(&"Exceeded maximum phase two iteration count");
+                return Err("Exceeded maximum phase two iteration count");
             }
             p2_itr += 1;
 
@@ -434,8 +409,8 @@ where
                 increments.push(LOPIncrement {
                     phase: 2,
                     iteration: p2_itr,
-                    pv_row: pv_row,
-                    pv_col: pv_col,
+                    pv_row,
+                    pv_col,
                     base_vars: base_vars.clone(),
                     non_base_vars: non_base_vars.clone(),
                     matrix: mx.clone(),
@@ -488,7 +463,7 @@ where
         Ok(LOPSolution {
             x: solution,
             fval: mx[(mx.layout().rows() - 1, mx.layout().cols() - 1)] + self.l,
-            increments: increments,
+            increments,
         })
     }
 }
@@ -671,7 +646,7 @@ where
     T: Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "=== LOP Solution ===\n")?;
+        writeln!(f, "=== LOP Solution ===")?;
 
         if self.increments.is_empty() {
             "<> No logged incr <>".fmt(f)?

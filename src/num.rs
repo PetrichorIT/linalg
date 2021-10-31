@@ -78,7 +78,7 @@ impl ClippableRange<usize> for RangeFrom<usize> {
 
 impl ClippableRange<usize> for RangeFull {
     fn into_clipped(self, bounds: RangeInclusive<usize>) -> RangeInclusive<usize> {
-        bounds.clone()
+        bounds
     }
 }
 

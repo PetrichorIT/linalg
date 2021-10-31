@@ -3,7 +3,7 @@ use random::Source;
 use std::time::Instant;
 
 fn main() {
-    let n = 10_000_0;
+    let n = 100_000;
     let upper_bound = 20;
 
     type T = usize;

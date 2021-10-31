@@ -10,7 +10,7 @@ use num_traits::{Float, Num};
 
 use crate::prelude::{lr, Matrix};
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Polynom<T> {
     coefficients: Vec<T>,
 }
@@ -51,7 +51,8 @@ where
                 return idx;
             }
         }
-        return 0;
+
+        0
     }
 
     ///
@@ -113,12 +114,6 @@ impl<T> DerefMut for Polynom<T> {
     }
 }
 
-impl<T: Hash> Hash for Polynom<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.coefficients.hash(state)
-    }
-}
-
 impl<T> Index<usize> for Polynom<T> {
     type Output = T;
     fn index(&self, index: usize) -> &Self::Output {
@@ -161,13 +156,11 @@ pub fn pinterpol<T: Float + Copy>(points: &[(T, T)]) -> Result<Polynom<T>, &'sta
     }
 
     let lr = lr(a);
-    let res = match lr {
+    match lr {
         Some(lr) => {
             let x: Vec<T> = lr.solve(&b).into();
             Ok(Polynom::new(x))
         }
         None => Err("Cannot solve lse, due to either numeric error or duplicate points"),
-    };
-
-    res
+    }
 }
