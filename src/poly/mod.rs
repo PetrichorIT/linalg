@@ -6,7 +6,7 @@ use std::{
     ops::{Deref, DerefMut, Index, IndexMut},
 };
 
-use num_traits::{Float, Num};
+use num_traits::{Float, Num, Zero};
 
 use crate::prelude::{lr, Matrix};
 
@@ -20,6 +20,10 @@ impl<T> Polynom<T> {
     #[inline(always)]
     pub fn coefficients(&self) -> &Vec<T> {
         &self.coefficients
+    }
+
+    pub fn coefficent(&mut self, idx: usize) -> &mut T {
+        &mut self.coefficients[idx]
     }
 
     pub fn new(coefficients: Vec<T>) -> Self {
@@ -83,11 +87,13 @@ where
     }
 }
 
-impl<T: Display> Display for Polynom<T> {
+impl<T: Display + Zero> Display for Polynom<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut str = String::new();
         for i in (0..self.coefficients.len()).rev() {
-            str.push_str(&format!("{}x^{}", self.coefficients[i], i))
+            if !self.coefficients[i].is_zero() {
+                str.push_str(&format!("{}x^{} ", self.coefficients[i], i))
+            }
         }
         write!(f, "y = {}", str)
     }
@@ -163,4 +169,27 @@ pub fn pinterpol<T: Float + Copy>(points: &[(T, T)]) -> Result<Polynom<T>, &'sta
         }
         None => Err("Cannot solve lse, due to either numeric error or duplicate points"),
     }
+}
+
+pub fn pdiv<T: Num + Copy>(mut lhs: Polynom<T>, rhs: Polynom<T>) -> (Polynom<T>, Polynom<T>) {
+    let mut result = Polynom::new(vec![T::zero(); lhs.degree() - rhs.degree() + 1]);
+
+    while lhs.degree() >= rhs.degree() {
+        let highest_part = lhs.coefficients()[lhs.degree()];
+        let highest_divisor = rhs.coefficients()[rhs.degree()];
+
+        let r = highest_part / highest_divisor;
+        let mag = lhs.degree() - rhs.degree();
+
+        result[mag] = r;
+
+        for i in 0..=rhs.degree() {
+            let tmag = mag + i;
+            if !rhs.coefficients()[i].is_zero() {
+                lhs[tmag] = lhs[tmag] - r * rhs.coefficients()[i]
+            }
+        }
+    }
+
+    (result, lhs)
 }

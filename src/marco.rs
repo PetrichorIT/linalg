@@ -1,5 +1,5 @@
 ///
-/// A macro to create a row-major matrix using the structs in [core](crate::core).
+/// A macro to create a row-major matrix using the structs in [matrix](mod@crate::matrix).
 ///
 /// # Syntax
 ///

@@ -39,6 +39,7 @@ pub use crate::lop::LOPSolution;
 pub use crate::lop::LinearOpimizationProblem;
 pub use crate::lop::LOP;
 
+pub use crate::poly::pdiv;
 /// # Polynom utils
 pub use crate::poly::pinterpol;
 pub use crate::poly::Polynom;

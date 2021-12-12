@@ -78,7 +78,7 @@ pub fn prt_over<T: Num + Copy + PartialOrd>(n: T, k: T) -> T {
 ///
 /// # Note
 ///
-/// Thsi function assums typ to be a permutation cycle type of an abitrary
+/// This function assums typ to be a permutation cycle type of an abitrary
 /// n-element set, where n is implicitly defined through the type.
 /// It computes the number of different permutation which will match this type
 /// in their cycle form.
@@ -91,6 +91,22 @@ pub fn permut_of_type(typ: &[(usize, usize)]) -> usize {
         n += class.0 * class.1;
     }
     fac(n) / numerator
+}
+
+///
+/// Returns the number of fixpoint free permutations of any set of
+/// size n.
+///
+pub fn permut_fpf(n: usize) -> usize {
+    let mut factor = 0f64;
+    let mut itr_fac = 1.0;
+
+    for k in 0..=n {
+        factor += (if k % 2 == 0 { 1.0 } else { -1.0 }) / itr_fac;
+        itr_fac *= (k as f64) + 1.0;
+    }
+
+    (factor * fac(n) as f64) as usize
 }
 
 ///
