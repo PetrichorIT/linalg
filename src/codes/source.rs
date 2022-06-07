@@ -21,6 +21,13 @@ impl<T> GenericSource<T> {
     }
 
     ///
+    /// Whether the code is empty.
+    ///
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    ///
     /// The entropy of the source base r.
     ///
     pub fn entropy(&self, r: f64) -> f64 {

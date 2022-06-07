@@ -209,7 +209,7 @@ where
     R: Read,
 {
     while !stream.is_empty() {
-        out.write_all(&[decode_byte(&tree, stream)])?
+        out.write_all(&[decode_byte(tree, stream)])?
     }
 
     Ok(())
@@ -282,7 +282,7 @@ impl Tree {
 ///
 /// A part of an encoding/decoding tree.
 ///
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct TreeNode {
     left: Option<Box<TreeNode>>,
     right: Option<Box<TreeNode>>,
@@ -293,11 +293,11 @@ impl TreeNode {
     ///
     /// The number of leafs under this node.
     ///
-    pub fn len(&self) -> usize {
+    pub fn num_leafs(&self) -> usize {
         if self.is_leaf() {
             1
         } else {
-            self.left.as_ref().unwrap().len() + self.right.as_ref().unwrap().len()
+            self.left.as_ref().unwrap().num_leafs() + self.right.as_ref().unwrap().num_leafs()
         }
     }
 
@@ -348,16 +348,6 @@ impl TreeNode {
                 right: Some(right),
                 value: 0,
             }))
-        }
-    }
-}
-
-impl Default for TreeNode {
-    fn default() -> Self {
-        Self {
-            left: None,
-            right: None,
-            value: 0,
         }
     }
 }

@@ -2,6 +2,7 @@
 
 use std::{
     fmt::Display,
+    fmt::Write,
     hash::Hash,
     ops::{Deref, DerefMut, Index, IndexMut},
 };
@@ -92,7 +93,8 @@ impl<T: Display + Zero> Display for Polynom<T> {
         let mut str = String::new();
         for i in (0..self.coefficients.len()).rev() {
             if !self.coefficients[i].is_zero() {
-                str.push_str(&format!("{}x^{} ", self.coefficients[i], i))
+                write!(str, "{}x^{} ", self.coefficients[i], i)?;
+                // str.push_str(&format!("{}x^{} ", self.coefficients[i], i))
             }
         }
         write!(f, "y = {}", str)

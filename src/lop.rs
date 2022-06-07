@@ -561,12 +561,6 @@ where
         // -> self.matrix.layout().rows() * 6
         let line_size = line_size + 6;
 
-        // There will be self.matrix.layout().rows() lines with an addional two headers
-        // + one empty check byte
-        let size = line_size * (self.matrix.layout().rows() + 2) + 1;
-
-        let mut str = String::with_capacity(size);
-
         // Line 1
 
         let phase_label = format!(
@@ -577,20 +571,20 @@ where
                 format!("S:{}", self.iteration)
             }
         );
-        str.push_str(&phase_label);
-        str.push_str("| ");
+        write!(f, "{}", phase_label)?;
+        write!(f, "| ")?;
         for bv in &self.base_vars {
             let s = format!("{:>8} ", format!("x{}", bv));
-            str.push_str(&s);
+            write!(f, "{}", s)?;
         }
-        str.push_str("|       \n");
+        writeln!(f, "|       ")?;
 
         // Line 2
 
         for _ in 0..(line_size) {
-            str.push('-')
+            write!(f, "-")?
         }
-        str.push('\n');
+        writeln!(f)?;
 
         // N lines
         for i in 0..self.matrix.layout().rows() {
@@ -603,8 +597,7 @@ where
             };
 
             let label = format!("{:>4} ", label);
-            str.push_str(&label);
-            str.push_str("| ");
+            write!(f, "{}| ", label)?;
 
             // for m - 1 cells
             for j in 0..(self.matrix.layout().cols() - 1) {
@@ -613,17 +606,17 @@ where
                 } else {
                     format!(" {:>6}  ", self.matrix[(i, j)])
                 };
-                str.push_str(&element);
+                write!(f, "{}", element)?;
             }
 
-            str.push_str("| ");
-            str.push_str(&format!(
-                "{:>6}\n",
+            writeln!(
+                f,
+                "| {:>6}",
                 self.matrix[(i, self.matrix.layout().cols() - 1)]
-            ));
+            )?;
         }
 
-        write!(f, "{}", str)
+        Ok(())
     }
 }
 

@@ -18,6 +18,13 @@ impl FullSourceDistr {
     }
 
     ///
+    /// Whether the distribution has sampled any values.
+    ///
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    ///
     /// The entropy base r of the source.
     ///
     pub fn entropy(&self, r: f64) -> f64 {
@@ -63,9 +70,9 @@ impl FullSourceDistr {
             distr: [0; 256],
             len: 0,
         };
-        for i in 0..probs.len() {
-            this.distr[i] += probs[i];
-            this.len += probs[i];
+        for (i, item) in probs.iter().enumerate() {
+            this.distr[i] += *item;
+            this.len += *item;
         }
         this
     }

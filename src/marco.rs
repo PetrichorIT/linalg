@@ -70,7 +70,7 @@ macro_rules! mat {
 
     () => (
         {
-            use crate::matrix::{MatrixLayout, Matrix};
+            use $crate::matrix::{MatrixLayout, Matrix};
             Matrix::new(MatrixLayout::new(0, 0), Vec::new())
         }
     );
@@ -79,12 +79,12 @@ macro_rules! mat {
         {
             let buffer = vec![$($b,)* $($item,)*];
 
-            use crate::matrix::MatrixLayout;
+            use $crate::matrix::MatrixLayout;
             let rows = $c + 1;
             let cols = buffer.len() / rows;
             let layout = MatrixLayout::new(rows, cols);
 
-            use crate::matrix::Matrix;
+            use $crate::matrix::Matrix;
             Matrix::new(layout, buffer)
         }
     );

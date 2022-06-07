@@ -10,7 +10,7 @@ pub struct BitWriter<W>
 where
     W: Write,
 {
-    inner: W,
+    inner: Option<W>,
     byte: u8,
     offset: u8,
 }
@@ -25,7 +25,7 @@ where
     ///
     pub fn new(writer: W) -> Self {
         Self {
-            inner: writer,
+            inner: Some(writer),
             byte: 0,
             offset: 0,
         }
@@ -35,7 +35,7 @@ where
     /// Returns a reference to the contained writer.
     ///
     pub fn inner(&self) -> &W {
-        &self.inner
+        self.inner.as_ref().unwrap()
     }
 
     ///
@@ -47,7 +47,7 @@ where
             let bit = (byte & mask) != 0;
             self.write_bit(bit)?;
 
-            mask = mask >> 1;
+            mask >>= 1;
         }
         Ok(())
     }
@@ -64,7 +64,7 @@ where
 
         self.offset += 1;
         if self.offset == 8 {
-            self.inner.write_all(&[self.byte])?;
+            self.inner.as_mut().unwrap().write_all(&[self.byte])?;
 
             self.byte = 0;
             self.offset = 0;
@@ -77,18 +77,31 @@ where
     /// Flushes and closes the writer, returning the contained handle.
     ///
     pub fn finish(mut self) -> W {
+        let mut inner = self.inner.take().unwrap();
+
         if self.offset != 0 {
-            self.inner.write_all(&[self.byte, self.offset]).unwrap();
+            inner.write_all(&[self.byte, self.offset]).unwrap();
         } else {
-            self.inner.write_all(&[8u8]).unwrap();
+            inner.write_all(&[8u8]).unwrap();
         }
 
-        self.inner
+        inner
     }
 }
 
-// TODO: Drop Impl
+impl<W: Write> Drop for BitWriter<W> {
+    fn drop(&mut self) {
+        if let Some(mut inner) = self.inner.take() {
+            if self.offset != 0 {
+                inner.write_all(&[self.byte, self.offset]).unwrap();
+            } else {
+                inner.write_all(&[8u8]).unwrap();
+            }
 
+            drop(inner)
+        }
+    }
+}
 ///
 /// A bit reader over a bytewise reader.
 ///
@@ -161,7 +174,7 @@ where
         let mut result = 0;
 
         for _ in 0..8 {
-            result = result << 1;
+            result <<= 1;
             let bit = self.read_bit()?;
             if bit {
                 result |= 1;

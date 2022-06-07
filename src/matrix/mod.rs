@@ -291,6 +291,7 @@ impl<T> Matrix<T> {
     /// are either filled with valid instances of the given type,
     /// or never used.
     ///
+    #[allow(clippy::uninit_vec)] // This is literally the meaning of this fn.
     pub unsafe fn uninitalized<U>(layout: U) -> Self
     where
         U: Into<MatrixLayout>,
@@ -1125,22 +1126,17 @@ where
     T: Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut str = String::with_capacity(self.layout.size() * 2);
-        str.push_str(&format!(
-            "Matrix<{}, {}> {{\n",
-            self.layout.rows, self.layout.cols
-        ));
+        writeln!(f, "Matrix<{}, {}> {{", self.layout.rows, self.layout.cols)?;
 
         for i in 0..self.layout.rows {
             for j in 0..self.layout.cols {
-                str.push_str(&format!(" {}", self[(i, j)]))
+                write!(f, " {}", self[(i, j)])?;
+                // str.push_str(&format!(" {}", self[(i, j)]))
             }
-            str.push('\n');
+            writeln!(f)?;
         }
 
-        str.push_str("}");
-
-        write!(f, "{}", str)
+        write!(f, "}}")
     }
 }
 
@@ -1534,7 +1530,7 @@ where
     type Output = Matrix<T>;
 
     fn mul(self, rhs: Matrix<T>) -> Self::Output {
-        Matrix::mmul(&self, &rhs)
+        Matrix::mmul(self, &rhs)
     }
 }
 
@@ -1545,7 +1541,7 @@ where
     type Output = Matrix<T>;
 
     fn mul(self, rhs: &'_ Matrix<T>) -> Self::Output {
-        Matrix::mmul(&self, rhs)
+        Matrix::mmul(self, rhs)
     }
 }
 
