@@ -1,12 +1,14 @@
 mod marco;
 mod num;
 
+pub mod codes;
 pub mod discret;
 pub mod lop;
 pub mod lse;
 pub mod matrix;
 pub mod poly;
 pub mod prelude;
+pub mod sets;
 
 #[allow(non_camel_case_types)]
 pub type c32 = num_complex::Complex32;

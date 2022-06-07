@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use super::{Matrix, MatrixLayout};
 #[allow(unused_imports)]
-use crate::mat;
+use crate::{mat, sets::GF};
 
 // [MatrixLayout] Tests
 
@@ -525,4 +525,77 @@ fn matrix_insert() {
             0, 0, 8, 16, 16;
         ]
     );
+}
+
+#[test]
+fn matrix_gf_2() {
+    let matrix: Matrix<GF<2>> = mat![
+        GF(1), GF(1), GF(0), GF(0);
+        GF(1), GF(0), GF(0), GF(1);
+    ];
+
+    let v: Matrix<GF<2>> = mat![
+        GF(1), GF(0);
+    ];
+
+    println!("{}", matrix);
+    println!("{}", v);
+    println!("{}", v * matrix)
+}
+
+#[test]
+fn series_5_task_1() {
+    let input: Vec<Matrix<GF<2>>> = vec![
+        mat![ GF(0), GF(0), GF(0), GF(0); ],
+        mat![ GF(0), GF(0), GF(0), GF(1); ],
+        mat![ GF(0), GF(0), GF(1), GF(0); ],
+        mat![ GF(0), GF(0), GF(1), GF(1); ],
+        mat![ GF(0), GF(1), GF(0), GF(0); ],
+        mat![ GF(0), GF(1), GF(0), GF(1); ],
+        mat![ GF(0), GF(1), GF(1), GF(0); ],
+        mat![ GF(0), GF(1), GF(1), GF(1); ],
+        mat![ GF(1), GF(0), GF(0), GF(0); ],
+        mat![ GF(1), GF(0), GF(0), GF(1); ],
+        mat![ GF(1), GF(0), GF(1), GF(0); ],
+        mat![ GF(1), GF(0), GF(1), GF(1); ],
+        mat![ GF(1), GF(1), GF(0), GF(0); ],
+        mat![ GF(1), GF(1), GF(0), GF(1); ],
+        mat![ GF(1), GF(1), GF(1), GF(0); ],
+        mat![ GF(1), GF(1), GF(1), GF(1); ],
+    ];
+
+    let generator: Matrix<GF<2>> = mat![
+        GF(1), GF(0), GF(0), GF(0), GF(1), GF(1), GF(1);
+        GF(0), GF(1), GF(0), GF(0), GF(1), GF(1), GF(0);
+        GF(0), GF(0), GF(1), GF(0), GF(1), GF(0), GF(1);
+        GF(0), GF(0), GF(0), GF(1), GF(0), GF(1), GF(1);
+    ];
+
+    for value in input {
+        println!("{} ==> {}", &value, &value * &generator)
+    }
+}
+
+#[test]
+fn series_5_task_3() {
+    let input: Vec<Matrix<GF<3>>> = vec![
+        mat! [ GF(0), GF(0); ],
+        mat! [ GF(0), GF(1); ],
+        mat! [ GF(0), GF(2); ],
+        mat! [ GF(1), GF(0); ],
+        mat! [ GF(1), GF(1); ],
+        mat! [ GF(1), GF(2); ],
+        mat! [ GF(2), GF(0); ],
+        mat! [ GF(2), GF(1); ],
+        mat! [ GF(2), GF(2); ],
+    ];
+
+    let gen: Matrix<GF<3>> = mat![
+        GF(2), GF(1), GF(2), GF(0);
+        GF(1), GF(1), GF(0), GF(1);
+    ];
+
+    for value in input {
+        println!("{} ==> {}", &value, &value * &gen);
+    }
 }

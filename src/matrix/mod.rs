@@ -1516,13 +1516,35 @@ where
     }
 }
 
-impl<T: Num> Mul<&Matrix<T>> for Matrix<T>
+impl<T: Num> Mul<&'_ Matrix<T>> for Matrix<T>
 where
     T: Mul<Output = T> + Add<Output = T> + Copy,
 {
     type Output = Matrix<T>;
 
-    fn mul(self, rhs: &Matrix<T>) -> Self::Output {
+    fn mul(self, rhs: &'_ Matrix<T>) -> Self::Output {
+        Matrix::mmul(&self, rhs)
+    }
+}
+
+impl<T: Num> Mul<Matrix<T>> for &'_ Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn mul(self, rhs: Matrix<T>) -> Self::Output {
+        Matrix::mmul(&self, &rhs)
+    }
+}
+
+impl<T: Num> Mul<&'_ Matrix<T>> for &'_ Matrix<T>
+where
+    T: Mul<Output = T> + Add<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn mul(self, rhs: &'_ Matrix<T>) -> Self::Output {
         Matrix::mmul(&self, rhs)
     }
 }
