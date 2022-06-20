@@ -87,7 +87,7 @@ fn matrix_inline() {
         layout: layout.clone(),
     };
 
-    assert_eq!(*matrix.layout(), layout);
+    assert_eq!(matrix.layout(), layout);
     assert_eq!(*matrix.raw(), buf);
     assert_eq!(matrix.size(), layout.size());
 }
@@ -258,7 +258,7 @@ fn matrix_resize() {
 
     // memory efficient varian
     matrix.resize((4, 3));
-    assert_eq!(*matrix.layout(), MatrixLayout::new(4, 3));
+    assert_eq!(matrix.layout(), MatrixLayout::new(4, 3));
 
     assert_eq!(matrix[(1, 1)], 5);
     assert_eq!(matrix[(1, 0)], 4);
@@ -274,7 +274,7 @@ fn matrix_resize() {
 
     // memory in-efficient varian
     matrix.resize((3, 4));
-    assert_eq!(*matrix.layout(), MatrixLayout::new(3, 4));
+    assert_eq!(matrix.layout(), MatrixLayout::new(3, 4));
 
     assert_eq!(matrix[(1, 1)], 5);
     assert_eq!(matrix[(1, 0)], 4);
@@ -334,7 +334,7 @@ fn matrix_transpose() {
     ];
 
     let result = matrix.transposed();
-    assert_eq!(*result.layout(), MatrixLayout::new(3, 2));
+    assert_eq!(result.layout(), MatrixLayout::new(3, 2));
     assert_eq!(*result.raw(), vec![1, 4, 2, 5, 3, 6]);
 
     let mut matrix = matrix;
@@ -367,18 +367,18 @@ fn matrix_scalar_mul() {
 
     // Scale and Mul
     let double = matrix.clone() * 2usize;
-    assert_eq!(*double.layout(), *matrix.layout());
+    assert_eq!(double.layout(), matrix.layout());
     assert_eq!(double[(1, 1)], 2 * matrix[(1, 1)]);
 
     // scale with MulAssign
     let mut mutmat = matrix.clone();
     mutmat *= 8;
-    assert_eq!(*mutmat.layout(), *matrix.layout());
+    assert_eq!(mutmat.layout(), matrix.layout());
     assert_eq!(mutmat[(1, 1)], 8 * matrix[(1, 1)]);
 
     // scalar (no clone needed ref based)
     let result = matrix.scalar(9);
-    assert_eq!(*result.layout(), *matrix.layout());
+    assert_eq!(result.layout(), matrix.layout());
     assert_eq!(result[(1, 1)], 9 * matrix[(1, 1)]);
 }
 
@@ -395,11 +395,11 @@ fn matrix_mmul() {
     ];
 
     let c = a.clone() * b.clone();
-    assert_eq!(*c.layout(), MatrixLayout::new(2, 2));
+    assert_eq!(c.layout(), MatrixLayout::new(2, 2));
     assert_eq!(c[(0, 0)], 1 + 6 + 15);
 
     let d = b * a;
-    assert_eq!(*d.layout(), MatrixLayout::new(3, 3));
+    assert_eq!(d.layout(), MatrixLayout::new(3, 3));
     assert_eq!(d[(0, 0)], 9);
 }
 
@@ -424,7 +424,7 @@ fn matrix_neg() {
 
     // checking direct impl
     let n = m.clone().neg();
-    assert_eq!(*n.layout(), *m.layout());
+    assert_eq!(n.layout(), m.layout());
     for k in 0..n.layout().size() {
         assert!(n[k] * -1 == m[k])
     }

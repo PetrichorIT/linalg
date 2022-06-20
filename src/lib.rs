@@ -1,31 +1,45 @@
 mod marco;
 mod num;
 
+pub mod algebra;
 pub mod codes;
 pub mod discret;
 pub mod lop;
-pub mod lse;
 pub mod matrix;
 pub mod poly;
 pub mod prelude;
 pub mod sets;
-
-#[allow(non_camel_case_types)]
-pub type c32 = num_complex::Complex32;
-#[allow(non_camel_case_types)]
-pub type c64 = num_complex::Complex64;
+pub mod vector;
 
 #[cfg(test)]
 mod tests {
 
+    use crate::algebra::inv;
+    use crate::algebra::vandermonde;
     use crate::lop::LOPOptions;
     use crate::lop::LOP;
-    use crate::lse::inv;
-    use crate::lse::tridiag;
     use crate::mat;
+    use crate::matrix;
     use crate::matrix::*;
     use crate::prelude::binom;
     use crate::prelude::eig;
+    use crate::prelude::GF;
+    use crate::vector::VectorSpace;
+
+    #[test]
+    fn vandermonde_test() {
+        let m = vandermonde(&[10, 20, 30, 40, 50]);
+        println!("{}", m)
+    }
+
+    #[test]
+    fn vector_space() {
+        let _e = VectorSpace::<GF<2>, 3>::unit_vectors();
+        let _a = VectorSpace::<GF<2>, 3>::all_vectors();
+
+        let _eq = VectorSpace::<GF<3>, 2>::equivalence_classes();
+        println!("{:?}", _eq)
+    }
 
     #[test]
     fn it_works() {
@@ -64,20 +78,7 @@ mod tests {
              -4.0, 2.0;
         ];
 
-        println!("{:?}", eig(matrix, 100))
-    }
-
-    #[test]
-    fn tdg_test() {
-        let m = mat![
-            1.0, 2.0, 6.0, -2.0;
-            3.0, 1.0, 0.0, 65.0;
-            (-2.0), -9.0, -0.4, 1.0;
-            1.0, 1.0, 1.0, 1.0;
-        ];
-
-        let t = tridiag(m);
-        println!("{}", t);
+        println!("{:?}", eig(matrix))
     }
 
     #[test]
@@ -101,5 +102,18 @@ mod tests {
         });
 
         println!("{}", x.unwrap());
+    }
+
+    #[test]
+    fn lua() {
+        assert_eq!(
+            crate::algebra::lua(&[matrix![1;0;0;], matrix![0;1;0;], matrix![0;0;1;]]),
+            true
+        );
+
+        assert_eq!(
+            crate::algebra::lua(&[matrix![1;0;0;], matrix![0;1;0;], matrix![-8;2;0;]]),
+            false
+        );
     }
 }

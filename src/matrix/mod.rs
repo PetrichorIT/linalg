@@ -11,7 +11,7 @@
 
 use std::{
     convert::TryFrom,
-    fmt::Display,
+    fmt::{Debug, Display},
     hash::Hash,
     mem::swap,
     ops::{
@@ -21,7 +21,7 @@ use std::{
     },
 };
 
-use num_traits::Num;
+use num_traits::{Num, Zero};
 
 use crate::num::ClippableRange;
 
@@ -45,7 +45,7 @@ mod tests;
 /// assert!(matrix[(0, 0)] == 0usize);
 /// ```
 ///
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct MatrixLayout {
     rows: usize,
     cols: usize,
@@ -223,8 +223,8 @@ pub struct Matrix<T> {
 impl<T> Matrix<T> {
     /// The layout constraints definig the matrix.
     #[inline(always)]
-    pub fn layout(&self) -> &MatrixLayout {
-        &self.layout
+    pub fn layout(&self) -> MatrixLayout {
+        self.layout
     }
 
     /// The raw buffer where the cells are stored.
@@ -279,6 +279,46 @@ impl<T> Matrix<T> {
     pub fn colvec(raw: Vec<T>) -> Self {
         let layout = MatrixLayout::new(raw.len(), 1);
         Self { layout, raw }
+    }
+
+    /// Creates a new matrix by combining n columvectors of size m into
+    /// a matrix with m rows and n colums
+    ///
+    pub fn cloned_from_parts_vertical(colvecs: &[Matrix<T>]) -> Self
+    where
+        T: Clone,
+    {
+        assert!(!colvecs.is_empty());
+        // assert!(colvecs[0].layout().is_colvec());
+
+        let col_depth = colvecs[0].len();
+        let layout = MatrixLayout::new(col_depth, colvecs.len());
+        let mut raw = Vec::with_capacity(layout.size());
+
+        for i in 0..col_depth {
+            for colvec in colvecs.iter() {
+                raw.push(colvec.raw[i].clone())
+            }
+        }
+
+        Self::new(layout, raw)
+    }
+
+    pub fn referenced_from_parts_vertical(colvecs: &[Matrix<T>]) -> Matrix<&T> {
+        assert!(!colvecs.is_empty());
+        // assert!(colvecs[0].layout().is_colvec());
+
+        let col_depth = colvecs[0].len();
+        let layout = MatrixLayout::new(col_depth, colvecs.len());
+        let mut raw = Vec::with_capacity(layout.size());
+
+        for i in 0..col_depth {
+            for colvec in colvecs.iter() {
+                raw.push(&colvec.raw[i])
+            }
+        }
+
+        Matrix::new(layout, raw)
     }
 
     ///
@@ -795,6 +835,22 @@ impl<T> IndexMut<(usize, usize)> for Matrix<T> {
     }
 }
 
+impl<T> Index<[usize; 2]> for Matrix<T> {
+    type Output = T;
+
+    #[inline(always)]
+    fn index(&self, index: [usize; 2]) -> &Self::Output {
+        &self.raw[self.layout.index((index[0], index[1]))]
+    }
+}
+
+impl<T> IndexMut<[usize; 2]> for Matrix<T> {
+    #[inline(always)]
+    fn index_mut(&mut self, index: [usize; 2]) -> &mut Self::Output {
+        &mut self.raw[self.layout.index((index[0], index[1]))]
+    }
+}
+
 impl<T> PartialEq for Matrix<T>
 where
     T: PartialEq,
@@ -859,7 +915,7 @@ where
     }
 
     fn lt(&self, other: &Self) -> bool {
-        assert_eq!(*self.layout(), *other.layout());
+        assert_eq!(self.layout(), other.layout());
         assert!(self.layout().is_vec());
 
         for k in 0..self.layout().size() {
@@ -872,7 +928,7 @@ where
     }
 
     fn le(&self, other: &Self) -> bool {
-        assert_eq!(*self.layout(), *other.layout());
+        assert_eq!(self.layout(), other.layout());
         assert!(self.layout().is_vec());
 
         for k in 0..self.layout().size() {
@@ -885,7 +941,7 @@ where
     }
 
     fn gt(&self, other: &Self) -> bool {
-        assert_eq!(*self.layout(), *other.layout());
+        assert_eq!(self.layout(), other.layout());
         assert!(self.layout().is_vec());
 
         for k in 0..self.layout().size() {
@@ -898,7 +954,7 @@ where
     }
 
     fn ge(&self, other: &Self) -> bool {
-        assert_eq!(*self.layout(), *other.layout());
+        assert_eq!(self.layout(), other.layout());
         assert!(self.layout().is_vec());
 
         for k in 0..self.layout().size() {
@@ -915,32 +971,68 @@ where
 /// Matrix: Addition
 ///
 
-impl<T: Num> Add for Matrix<T>
+impl<T> Add<Matrix<T>> for Matrix<T>
 where
-    T: Add + Copy,
+    T: Add<Output = T> + Copy,
 {
-    type Output = Matrix<<T as Add>::Output>;
+    type Output = Matrix<T>;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        assert!(self.layout == rhs.layout);
-
-        // SAFTY: Since the iteration will follow the raw vector thus will fill
-        // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = unsafe { Matrix::uninitalized(self.layout) };
-
-        for i in 0..result.raw.len() {
-            result.raw[i] = self.raw[i].add(rhs.raw[i]);
-        }
-
-        result
+    fn add(self, rhs: Matrix<T>) -> Self::Output {
+        Add::add(self, &rhs)
     }
 }
 
-impl<T: Num> AddAssign for Matrix<T>
+impl<T> Add<&'_ Matrix<T>> for Matrix<T>
+where
+    T: Add<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn add(mut self, rhs: &'_ Matrix<T>) -> Self::Output {
+        assert!(self.layout == rhs.layout);
+        for i in 0..self.raw.len() {
+            self.raw[i] = self.raw[i].add(rhs.raw[i]);
+        }
+        self
+    }
+}
+
+impl<T> Add<Matrix<T>> for &'_ Matrix<T>
+where
+    T: Add<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn add(self, rhs: Matrix<T>) -> Self::Output {
+        Add::add(self.clone(), &rhs)
+    }
+}
+
+impl<T> Add<&'_ Matrix<T>> for &'_ Matrix<T>
+where
+    T: Add<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn add(self, rhs: &'_ Matrix<T>) -> Self::Output {
+        Add::add(self.clone(), rhs)
+    }
+}
+
+impl<T> AddAssign<Matrix<T>> for Matrix<T>
 where
     T: AddAssign + Copy,
 {
-    fn add_assign(&mut self, rhs: Self) {
+    fn add_assign(&mut self, rhs: Matrix<T>) {
+        AddAssign::add_assign(self, &rhs)
+    }
+}
+
+impl<T> AddAssign<&'_ Matrix<T>> for Matrix<T>
+where
+    T: AddAssign + Copy,
+{
+    fn add_assign(&mut self, rhs: &'_ Matrix<T>) {
         assert!(self.layout == rhs.layout);
         for i in 0..self.raw.len() {
             self.raw[i].add_assign(rhs.raw[i])
@@ -952,53 +1044,68 @@ where
 /// Matrix: Subtraction
 ///
 
-impl<T: Num> Sub for Matrix<T>
+impl<T> Sub<Matrix<T>> for Matrix<T>
 where
-    T: Sub + Copy,
+    T: Sub<Output = T> + Copy,
 {
-    type Output = Matrix<<T as Sub>::Output>;
+    type Output = Matrix<T>;
 
-    fn sub(self, rhs: Self) -> Self::Output {
-        assert!(self.layout == rhs.layout);
-
-        // SAFTY: Since the iteration will follow the raw vector thus will fill
-        // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = unsafe { Matrix::uninitalized(self.layout) };
-
-        for i in 0..result.raw.len() {
-            result.raw[i] = self.raw[i].sub(rhs.raw[i]);
-        }
-
-        result
+    fn sub(self, rhs: Matrix<T>) -> Self::Output {
+        Sub::sub(self, &rhs)
     }
 }
 
-impl<T: Num> Sub for &Matrix<T>
+impl<T> Sub<&'_ Matrix<T>> for Matrix<T>
 where
-    T: Sub + Copy,
+    T: Sub<Output = T> + Copy,
 {
-    type Output = Matrix<<T as Sub>::Output>;
+    type Output = Matrix<T>;
 
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn sub(mut self, rhs: &'_ Matrix<T>) -> Self::Output {
         assert!(self.layout == rhs.layout);
-
-        // SAFTY: Since the iteration will follow the raw vector thus will fill
-        // all elements. Since layouts are equal, all operands are indeed provided
-        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
-
-        for i in 0..result.raw.len() {
-            result.raw[i] = self.raw[i].sub(rhs.raw[i]);
+        for i in 0..self.raw.len() {
+            self.raw[i] = self.raw[i].sub(rhs.raw[i]);
         }
-
-        result
+        self
     }
 }
 
-impl<T: Num> SubAssign for Matrix<T>
+impl<T> Sub<Matrix<T>> for &'_ Matrix<T>
+where
+    T: Sub<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn sub(self, rhs: Matrix<T>) -> Self::Output {
+        Sub::sub(self.clone(), &rhs)
+    }
+}
+
+impl<T> Sub<&'_ Matrix<T>> for &'_ Matrix<T>
+where
+    T: Sub<Output = T> + Copy,
+{
+    type Output = Matrix<T>;
+
+    fn sub(self, rhs: &'_ Matrix<T>) -> Self::Output {
+        Sub::sub(self.clone(), rhs)
+    }
+}
+
+impl<T> SubAssign<Matrix<T>> for Matrix<T>
 where
     T: SubAssign + Copy,
 {
-    fn sub_assign(&mut self, rhs: Self) {
+    fn sub_assign(&mut self, rhs: Matrix<T>) {
+        SubAssign::sub_assign(self, &rhs)
+    }
+}
+
+impl<T> SubAssign<&'_ Matrix<T>> for Matrix<T>
+where
+    T: SubAssign + Copy,
+{
+    fn sub_assign(&mut self, rhs: &'_ Matrix<T>) {
         assert!(self.layout == rhs.layout);
         for i in 0..self.raw.len() {
             self.raw[i].sub_assign(rhs.raw[i])
@@ -1290,7 +1397,7 @@ where
         // SAFTY:
         // Matix is identical in layout, so all cells will be filled,
         // cause iteration over raw values
-        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
 
         for k in 0..self.layout.size() {
             result.raw[k] = scalar * self.raw[k];
@@ -1372,7 +1479,7 @@ where
         // SAFTY:
         // Matix is identical in layout, so all cells will be filled,
         // cause iteration over raw values
-        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
         for k in 0..self.layout.size() {
             result.raw[k] = self.raw[k] / divider;
         }
@@ -1433,9 +1540,9 @@ where
 /// Matrix: Multiplication
 ///
 
-impl<T: Num> Matrix<T>
+impl<T> Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Zero + Copy,
 {
     ///
     /// Performs a matrix mutiplication with the two operands,
@@ -1501,9 +1608,11 @@ where
     // in Mul (sometimes rhs as well)
 }
 
-impl<T: Num> Mul<Matrix<T>> for Matrix<T>
+// Matrix x Matrix mutiplication
+
+impl<T> Mul<Matrix<T>> for Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Zero + Copy,
 {
     type Output = Matrix<T>;
 
@@ -1512,9 +1621,9 @@ where
     }
 }
 
-impl<T: Num> Mul<&'_ Matrix<T>> for Matrix<T>
+impl<T> Mul<&'_ Matrix<T>> for Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Zero + Copy,
 {
     type Output = Matrix<T>;
 
@@ -1523,9 +1632,9 @@ where
     }
 }
 
-impl<T: Num> Mul<Matrix<T>> for &'_ Matrix<T>
+impl<T> Mul<Matrix<T>> for &'_ Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Zero + Copy,
 {
     type Output = Matrix<T>;
 
@@ -1534,9 +1643,9 @@ where
     }
 }
 
-impl<T: Num> Mul<&'_ Matrix<T>> for &'_ Matrix<T>
+impl<T> Mul<&'_ Matrix<T>> for &'_ Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Zero + Copy,
 {
     type Output = Matrix<T>;
 
@@ -1545,9 +1654,23 @@ where
     }
 }
 
+// Matrix x Vector mutiplication
+
+// TODO:
+// To correct impl Matrix * vector the output should be a vector aswell
+// -> const parameter cannot be determined since matrix does not support generic size
+
+// impl<T, const N: usize> Mul<Vector<T, N>> for Matrix<T> where
+//     T: Mul<Output = T> + Add<Output = T> + Zero + Copy
+// {
+//     type Output = ;
+// }
+
+// Matrix x Matrix Assignment
+
 impl<T: Num> MulAssign<Matrix<T>> for Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Zero + Copy,
 {
     fn mul_assign(&mut self, rhs: Matrix<T>) {
         *self = Matrix::mmul(self, &rhs)
@@ -1556,7 +1679,7 @@ where
 
 impl<T: Num> MulAssign<&Matrix<T>> for Matrix<T>
 where
-    T: Mul<Output = T> + Add<Output = T> + Copy,
+    T: Mul<Output = T> + Add<Output = T> + Zero + Copy,
 {
     fn mul_assign(&mut self, rhs: &Matrix<T>) {
         *self = Matrix::mmul(self, rhs)
@@ -1590,7 +1713,7 @@ where
 
     fn neg(self) -> Self::Output {
         // SAFTY: All cells will be filled through a raw itr
-        let mut result = unsafe { Matrix::uninitalized(self.layout.clone()) };
+        let mut result = unsafe { Matrix::uninitalized(self.layout) };
 
         for k in 0..self.layout.size() {
             result.raw[k] = self.raw[k].neg();

@@ -3,6 +3,8 @@ use std::{
     fmt::{Debug, Display},
 };
 
+use crate::prelude::binom;
+
 ///
 /// A Word defined as a finite sequence of characters from an alphabeth A.
 ///
@@ -199,4 +201,24 @@ impl<A> IntoIterator for Code<A> {
     fn into_iter(self) -> Self::IntoIter {
         self.words.into_iter()
     }
+}
+
+///
+/// The hamming bound for a code over an
+/// alphabeth with r chacracters with codewords length n
+/// and an error correction of t bits.
+///
+pub fn hamming_bound(r: usize, n: usize, t: usize) -> f64 {
+    r.pow(n as u32) as f64
+        / (0..=t)
+            .into_iter()
+            .fold(0, |sum, k| sum + binom(n, k) * (r - 1).pow(k as u32)) as f64
+}
+
+///
+/// The singelton bound for a code if r charcters with codewords
+/// length n that should have a codeword distance greater ir equal
+/// than d.
+pub fn singelton_bound(r: usize, n: usize, d: usize) -> usize {
+    r.pow((n - d + 1) as u32)
 }

@@ -33,43 +33,6 @@ macro_rules! matrix {
 
     () => (
         {
-            use linalg::matrix::{MatrixLayout, Matrix};
-            Matrix::new(MatrixLayout::new(0, 0), Vec::new())
-        }
-    );
-
-    ($($item:expr,)* ; -> ($c:expr; [ $($b:expr,)* ])) => (
-        {
-            let buffer = vec![$($b,)* $($item,)*];
-
-            use linalg::matrix::MatrixLayout;
-            let rows = $c + 1;
-            let cols = buffer.len() / rows;
-            let layout = MatrixLayout::new(rows, cols);
-
-            use linalg::matrix::Matrix;
-            Matrix::new(layout, buffer)
-        }
-    );
-
-    ($($item:expr,)* ; $($($tail:expr,)*;)+ -> ($c:expr; [ $($b:expr,)* ])) => (
-        matrix!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
-    );
-
-    ($($($item:expr),*;)*) => (
-        matrix!($($($item,)*;)* -> (0; []))
-    );
-}
-
-// This marco is only used internally
-// and thus uses the crate prefix instead of the linalg prefix
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! mat {
-
-    () => (
-        {
             use $crate::matrix::{MatrixLayout, Matrix};
             Matrix::new(MatrixLayout::new(0, 0), Vec::new())
         }
@@ -90,10 +53,34 @@ macro_rules! mat {
     );
 
     ($($item:expr,)* ; $($($tail:expr,)*;)+ -> ($c:expr; [ $($b:expr,)* ])) => (
-        mat!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
+        $crate::matrix!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
     );
 
     ($($($item:expr),*;)*) => (
-        mat!($($($item,)*;)* -> (0; []))
+        $crate::matrix!($($($item,)*;)* -> (0; []))
+    );
+}
+
+// This marco is only used internally
+// and thus uses the crate prefix instead of the linalg prefix
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! mat {
+
+    () => (
+        $crate::matrix![]
+    );
+
+    ($($item:expr,)* ; -> ($c:expr; [ $($b:expr,)* ])) => (
+        $crate::matrix![$($item:expr,)* ; -> ($c:expr; [ $($b:expr,)* ])]
+    );
+
+    ($($item:expr,)* ; $($($tail:expr,)*;)+ -> ($c:expr; [ $($b:expr,)* ])) => (
+        $crate::matrix!($($($tail,)*;)+ -> ($c + 1; [ $($b,)* $($item,)* ]))
+    );
+
+    ($($($item:expr),*;)*) => (
+        $crate::matrix!($($($item,)*;)* -> (0; []))
     );
 }

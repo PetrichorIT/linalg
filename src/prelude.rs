@@ -20,17 +20,17 @@ pub use crate::discret::Stirling1Tbl;
 pub use crate::discret::Stirling2Tbl;
 
 /// # Linear system of equationss
-pub use crate::lse::det;
-pub use crate::lse::eig;
-pub use crate::lse::eigv_powitr;
-pub use crate::lse::eigv_powitr_inv;
-pub use crate::lse::inv;
-pub use crate::lse::lr;
-pub use crate::lse::lr_dry;
-pub use crate::lse::qr;
-pub use crate::lse::trace;
-pub use crate::lse::LrDecomposition;
-pub use crate::lse::QrDecomposition;
+pub use crate::algebra::det;
+pub use crate::algebra::eig;
+pub use crate::algebra::eigv_powitr;
+pub use crate::algebra::eigv_powitr_inv;
+pub use crate::algebra::inv;
+pub use crate::algebra::lr;
+pub use crate::algebra::lr_dry;
+pub use crate::algebra::qr;
+pub use crate::algebra::trace;
+pub use crate::algebra::LrDecomposition;
+pub use crate::algebra::QrDecomposition;
 
 /// # Linear optimization
 pub use crate::lop::LOPIncrement;
@@ -39,7 +39,10 @@ pub use crate::lop::LOPSolution;
 pub use crate::lop::LinearOpimizationProblem;
 pub use crate::lop::LOP;
 
-pub use crate::poly::pdiv;
 /// # Polynom utils
+pub use crate::poly::pdiv;
 pub use crate::poly::pinterpol;
 pub use crate::poly::Polynom;
+
+/// # Sets
+pub use crate::sets::GF;

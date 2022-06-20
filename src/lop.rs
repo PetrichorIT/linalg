@@ -711,7 +711,7 @@ mod tests {
         let x = x.unwrap();
 
         assert_eq!(x.fval, -5.0);
-        assert_eq!(*x.x.layout(), MatrixLayout::new(5, 1));
+        assert_eq!(x.x.layout(), MatrixLayout::new(5, 1));
         assert_eq!(*x.x.raw(), vec![6.0, 5.0, 2.0, 0.0, 0.0]);
         assert_eq!(x.increments, vec![]);
     }
@@ -759,7 +759,7 @@ mod tests {
 
         let x = x.unwrap();
         assert_eq!(x.fval, -2.0);
-        assert_eq!(*x.x.layout(), MatrixLayout::new(4, 1));
+        assert_eq!(x.x.layout(), MatrixLayout::new(4, 1));
         assert_eq!(*x.x.raw(), vec![0.0, 1.0, 0.0, 4.0]);
 
         assert!(x.increments.len() == 5);

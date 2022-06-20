@@ -34,27 +34,33 @@ numConstantsImpl!(2, 8, 10, isize, i8, i16, i32, i64, i128);
 numConstantsImpl!(2.0, 8.0, 1.0, f32, f64);
 
 pub trait NumFractionalConstants: NumConstants {
-    fn half() -> Self;
-    fn third() -> Self;
-    fn fifth() -> Self;
+    const QUATER: Self;
+    const HALF: Self;
+    const THIRD: Self;
+    const FIFTH: Self;
+
+    fn three_quater() -> Self
+    where
+        Self: Sized + std::ops::Add<Output = Self>,
+    {
+        Self::QUATER + Self::QUATER + Self::QUATER
+    }
 }
 
 macro_rules! numFractionalConstantsImpl {
-    ($half: expr, $third: expr, $fifth: expr, $($t: ty),*) => {
+    ($quater: expr, $half: expr, $third: expr, $fifth: expr => $($t: ty),*) => {
         $(
             impl NumFractionalConstants for $t {
-                #[inline(always)]
-                fn half() -> $t { $half }
-                #[inline(always)]
-                fn third() -> $t { $third }
-                #[inline(always)]
-                fn fifth() -> $t { $fifth }
+                const QUATER: Self =  $quater;
+                const HALF: Self =  $half;
+                const THIRD: Self =  $third;
+                const FIFTH: Self =  $fifth;
             }
         )*
     }
 }
 
-numFractionalConstantsImpl!(0.5, 1.0 / 3.0, 0.2, f32, f64);
+numFractionalConstantsImpl!(0.25, 0.5, 1.0 / 3.0, 0.2 => f32, f64);
 
 pub trait ClippableRange<Idx> {
     fn into_clipped(self, bounds: RangeInclusive<Idx>) -> RangeInclusive<Idx>;
