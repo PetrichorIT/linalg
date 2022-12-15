@@ -2,7 +2,7 @@ mod defs;
 use std::fmt::Display;
 use std::ops::Neg;
 
-pub use defs::{LOPParameterBound, LOP};
+pub use defs::LOP;
 
 use crate::matrix::Matrix;
 use num_traits::Num;
@@ -12,9 +12,13 @@ pub struct Simplex<T: Num + Copy> {
 }
 
 impl<T: Num + Copy + PartialOrd + Neg<Output = T>> Simplex<T> {
-    pub fn new(lop: LOP<T>) -> Simplex<T> {
+    pub fn new(lop: LOP<T>) -> Simplex<T>
+    where
+        T: Display + std::fmt::Debug,
+    {
         let lop = lop.into_standard_form();
-        let LOP::StandardForm { c, a, b } = lop else {
+        println!("{}", lop);
+        let LOP::StandardForm { c, a, b, .. } = lop else {
             panic!("This should not have happened")
         };
 
@@ -24,6 +28,8 @@ impl<T: Num + Copy + PartialOrd + Neg<Output = T>> Simplex<T> {
         tableau.insert(a.layout().rows().., 0.., &c.transposed());
 
         let x = Matrix::fill((a.layout().cols(), 1), T::zero());
+
+        println!("{c}");
         let z = Matrix::mmul(&c.transposed(), &x);
         assert_eq!(z.len(), 1);
         tableau[(a.layout().rows(), a.layout().cols())] = z[0];
@@ -31,28 +37,44 @@ impl<T: Num + Copy + PartialOrd + Neg<Output = T>> Simplex<T> {
         Self { tableau }
     }
 
-    pub fn solve(mut self, max_steps: usize) -> Result<(), &'static str>
+    pub fn solve(mut self, max_steps: usize) -> Result<Matrix<T>, &'static str>
     where
         T: Display,
     {
         // Asumes step 2
-
         let n = self.tableau.layout().cols() - 1;
         let m = self.tableau.layout().rows() - 1;
+
+        let mut base_state = vec![true; n];
+        for i in 0..(n - m) {
+            base_state[i] = false
+        }
+
         for _ in 0..max_steps {
             println!("{}", self.tableau);
             // Chosse j such that dj < 0
             // Since last rows is -dj search for a positive one
             let mut j = usize::MAX;
             for i in 0..n {
-                if self.tableau[(m, i)] > T::zero() {
+                if self.tableau[(m, i)] < T::zero() {
                     j = i;
                     break;
                 }
             }
 
             if j == usize::MAX {
-                return Ok(());
+                let mut x = Matrix::zeroed((n, 1));
+                for i in 0..n {
+                    if base_state[i] {
+                        let row = (0..m)
+                            .into_iter()
+                            .find(|j| self.tableau[(*j, i)] == T::one())
+                            .unwrap();
+                        x[(i, 0)] = self.tableau[(row, n)];
+                    }
+                }
+
+                return Ok(x);
             }
 
             // Choose an l such that A[l, j] > 0 and
@@ -71,12 +93,26 @@ impl<T: Num + Copy + PartialOrd + Neg<Output = T>> Simplex<T> {
                 return Err("Problem is unbounded");
             };
 
+            // Find replace base col
+            let (idx, _) = base_state
+                .iter()
+                .enumerate()
+                .find(|(i, c)| **c && self.tableau[(l, *i)] == T::one())
+                .unwrap();
+
+            base_state[idx] = false;
+            base_state[j] = true;
+
+            println!("pivot = {l},{j}");
+
             // Pivot A[l, j]
             // (1) Make this row basr worth by making the pivot 1
             let factor = T::one() / self.tableau[(l, j)];
             for i in 0..=n {
                 self.tableau[(l, i)] = self.tableau[(l, i)] * factor;
             }
+            // Ensure that pivot is 1 (it should be either way but this is for Eq)
+            self.tableau[(l, j)] = T::one();
 
             // (2) For all other rows, make zero
             for k in 0..m {
@@ -95,7 +131,7 @@ impl<T: Num + Copy + PartialOrd + Neg<Output = T>> Simplex<T> {
             }
         }
 
-        Ok(())
+        Err("iteration counter exceeded")
     }
 }
 

@@ -373,6 +373,9 @@ impl<T> Matrix<T> {
         U: ClippableRange<usize>,
         V: ClippableRange<usize>,
     {
+        if self.is_empty() {
+            return Matrix::new((0, 0), Vec::new());
+        }
         let (row_bounds, col_bounds) = self.layout().bounds();
         let rows = rows.into_clipped(row_bounds);
         let cols = cols.into_clipped(col_bounds);
@@ -698,7 +701,7 @@ where
     /// ];
     /// matrix.resize((3, 3));
     ///
-    /// assert_eq!(*matrix.layout(), MatrixLayout::new(3, 3));
+    /// assert_eq!(matrix.layout(), MatrixLayout::new(3, 3));
     /// assert_eq!(matrix[(0, 0)], 1);
     /// assert_eq!(matrix[(1, 1)], 4);
     /// assert_eq!(matrix[(2, 2)], 0usize);
@@ -1292,7 +1295,7 @@ where
     /// use linalg::prelude::*;
     ///
     /// let diag = Matrix::diag(vec![1, 2, 3]);
-    /// assert!(*diag.layout() == MatrixLayout::new(3, 3));
+    /// assert!(diag.layout() == MatrixLayout::new(3, 3));
     /// assert!(diag.trace() == 6);
     /// ```
     ///
@@ -1325,7 +1328,7 @@ where
     /// ]).unwrap();
     /// matrix.transpose();
     ///
-    /// assert!(*matrix.layout() == MatrixLayout::new(3, 2));
+    /// assert!(matrix.layout() == MatrixLayout::new(3, 2));
     /// assert!(matrix[(2, 1)] == 6);
     /// ```
     ///
@@ -1353,7 +1356,7 @@ where
     /// ]).unwrap();
     /// let matrix = matrix.transposed();
     ///
-    /// assert!(*matrix.layout() == MatrixLayout::new(3, 2));
+    /// assert!(matrix.layout() == MatrixLayout::new(3, 2));
     /// assert!(matrix[(2, 1)] == 6);
     /// ```
     ///
@@ -1533,7 +1536,7 @@ where
     /// let matrix = Matrix::diag(vec![2, 4, 6]);
     /// let mut half = matrix.clone();
     /// half.scale_div(2);
-    /// assert_eq!(*matrix.layout(), *half.layout());
+    /// assert_eq!(matrix.layout(), half.layout());
     /// assert_eq!(matrix[(0, 0)] / 2, half[(0, 0)]);
     /// assert_eq!(matrix[(2, 0)] / 2, half[(2, 0)]);
     /// ```
