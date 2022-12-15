@@ -1,5 +1,18 @@
 use std::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
+pub trait Abs {
+    fn abs(&self) -> Self;
+}
+
+impl<T> Abs for T
+where
+    T: num_traits::Signed,
+{
+    fn abs(&self) -> Self {
+        num_traits::Signed::abs(self)
+    }
+}
+
 pub trait NumConstants {
     fn two() -> Self;
     fn eight() -> Self;

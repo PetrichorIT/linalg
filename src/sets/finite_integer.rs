@@ -4,11 +4,19 @@ use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
 };
 
+use crate::num::Abs;
+
 ///
 /// Interger with arithemtic module N aka. GF(N).
 ///
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GF<const N: usize>(pub usize);
+
+impl<const N: usize> Abs for GF<N> {
+    fn abs(&self) -> Self {
+        *self
+    }
+}
 
 // == ADD ==
 
@@ -76,41 +84,51 @@ impl<const N: usize> Display for GF<N> {
 
 impl<const N: usize> Div<GF<N>> for GF<N> {
     type Output = GF<N>;
-    fn div(self, _rhs: GF<N>) -> Self::Output {
-        todo!()
+    fn div(self, rhs: GF<N>) -> Self::Output {
+        Div::div(&self, &rhs)
     }
 }
 
 impl<'a, const N: usize> Div<GF<N>> for &'a GF<N> {
     type Output = GF<N>;
-    fn div(self, _rhs: GF<N>) -> Self::Output {
-        todo!()
+    fn div(self, rhs: GF<N>) -> Self::Output {
+        Div::div(self, &rhs)
     }
 }
 
 impl<const N: usize> Div<&'_ GF<N>> for GF<N> {
     type Output = GF<N>;
-    fn div(self, _rhs: &'_ GF<N>) -> Self::Output {
-        todo!()
+    fn div(self, rhs: &'_ GF<N>) -> Self::Output {
+        Div::div(&self, rhs)
     }
 }
 
 impl<'a, const N: usize> Div<&'_ GF<N>> for &'a GF<N> {
     type Output = GF<N>;
-    fn div(self, _rhs: &'_ GF<N>) -> Self::Output {
-        todo!()
+    fn div(self, rhs: &'_ GF<N>) -> Self::Output {
+        // Call: a / b = c
+        // this means c * b = a
+        // so that (a / b) * b = a
+
+        for i in 0..N {
+            if GF(i) * rhs == *self {
+                return GF(i);
+            }
+        }
+
+        panic!("Found no mutltiplicative inverse. Note that N must be a primepower")
     }
 }
 
 impl<const N: usize> DivAssign<GF<N>> for GF<N> {
-    fn div_assign(&mut self, _rhs: GF<N>) {
-        todo!()
+    fn div_assign(&mut self, rhs: GF<N>) {
+        *self = *self * rhs;
     }
 }
 
 impl<const N: usize> DivAssign<&'_ GF<N>> for GF<N> {
-    fn div_assign(&mut self, _rhs: &'_ GF<N>) {
-        todo!()
+    fn div_assign(&mut self, rhs: &'_ GF<N>) {
+        *self = *self * rhs;
     }
 }
 

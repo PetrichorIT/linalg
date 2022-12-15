@@ -4,7 +4,7 @@
 
 use crate::{
     matrix::{Matrix, MatrixLayout},
-    num::{NumConstants, NumFractionalConstants},
+    num::{Abs, NumConstants, NumFractionalConstants},
 };
 use num_traits::{Float, Num};
 use std::{
@@ -528,9 +528,73 @@ where
     Some(result)
 }
 
+pub fn gauss<T>(mut matrix: Matrix<T>) -> Matrix<T>
+where
+    T: Num + Copy + PartialOrd + Display + Abs,
+{
+    _gauss_impl(&mut matrix).expect("Failed gaussian pv");
+    matrix
+}
+
+fn _gauss_impl<T>(matrix: &mut Matrix<T>) -> Option<()>
+where
+    T: Num + Copy + PartialOrd + Display + Abs,
+{
+    assert!(matrix.layout().cols() >= matrix.layout().rows());
+
+    let mut pv_row = 0;
+    let mut pv_col = 0;
+
+    while pv_row < matrix.layout().rows() && pv_col < matrix.layout().cols() {
+        // Find the max pivot in col.
+        // use a fold (idx, max_value) as running value.
+        let (i_max, v_max) =
+            (pv_row..matrix.layout().rows()).fold((pv_row, T::zero()), |(acc_i, acc_v), c| {
+                if matrix[(c, pv_col)].abs() > acc_v {
+                    (c, matrix[(c, pv_col)])
+                } else {
+                    (acc_i, acc_v)
+                }
+            });
+
+        println!("Selected pivot at ({i_max}, {pv_col})");
+
+        if v_max.is_zero() {
+            // No pivot in this collum, goto next
+            pv_col += 1;
+            continue;
+        }
+
+        // Swap rows
+        if i_max != pv_row {
+            for j in 0..matrix.layout().cols() {
+                let t = matrix[(pv_row, j)];
+                matrix[(pv_row, j)] = matrix[(i_max, j)];
+                matrix[(i_max, j)] = t;
+            }
+        }
+
+        // Zero out all rows below the pv
+        for i in (pv_row + 1)..matrix.layout().rows() {
+            let f = matrix[(i, pv_col)] / matrix[(pv_row, pv_col)];
+            matrix[(i, pv_col)] = T::zero();
+            for j in (pv_col + 1)..matrix.layout().cols() {
+                matrix[(i, j)] = matrix[(i, j)] - matrix[(pv_row, j)] * f;
+            }
+        }
+
+        pv_row += 1;
+        pv_col += 1;
+
+        println!("{matrix}")
+    }
+
+    Some(())
+}
+
 /// Internal fn to apply the gaus jordan reduction to a given matrix.
 /// Panics if cols < rows
-fn _gauss_jordan_impl<T>(matrix: &mut Matrix<T>) -> Option<()>
+pub(crate) fn _gauss_jordan_impl<T>(matrix: &mut Matrix<T>) -> Option<()>
 where
     T: Num + Copy,
 {
@@ -538,9 +602,9 @@ where
 
     for i in 0..matrix.layout().rows() {
         // Find pivot
-        if matrix[(i, i)] == T::zero() {
-            let pv_row = (i + 1..matrix.layout().rows()).find(|&k| matrix[(k, k)] != T::zero())?;
 
+        if matrix[(i, i)].is_zero() {
+            let pv_row = (i + 1..matrix.layout().rows()).find(|&k| !matrix[(k, i)].is_zero())?;
             // Swap lines
             for j in 0..matrix.layout().cols() {
                 let temp = matrix[(i, j)];

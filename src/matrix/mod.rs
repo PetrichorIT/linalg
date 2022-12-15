@@ -23,7 +23,7 @@ use std::{
 
 use num_traits::{Num, Zero};
 
-use crate::num::ClippableRange;
+use crate::{num::ClippableRange, vector::Vector};
 
 mod tests;
 
@@ -221,6 +221,10 @@ pub struct Matrix<T> {
 }
 
 impl<T> Matrix<T> {
+    pub(crate) fn into_raw(self) -> Vec<T> {
+        self.raw
+    }
+
     /// The layout constraints definig the matrix.
     #[inline(always)]
     pub fn layout(&self) -> MatrixLayout {
@@ -386,6 +390,17 @@ impl<T> Matrix<T> {
         result
     }
 
+    pub fn insert_vector(
+        &mut self,
+        rows: impl ClippableRange<usize>,
+        cols: impl ClippableRange<usize>,
+        vector: Vector<T>,
+    ) where
+        T: Copy,
+    {
+        self.insert(rows, cols, &vector.into())
+    }
+
     ///
     /// Inserts elements of a given matrix into the self using the provided
     /// ranges as anchor point and constrains.
@@ -396,6 +411,9 @@ impl<T> Matrix<T> {
         U: ClippableRange<usize>,
         V: ClippableRange<usize>,
     {
+        if matrix.len() == 0 {
+            return;
+        }
         let (row_bounds, col_bounds) = self.layout().bounds();
 
         // Bounds clipped to parent indices
@@ -1726,3 +1744,13 @@ where
 //
 // Matrix: Power  TODO
 //
+
+impl<T: Copy + Zero> num_traits::Zero for Matrix<T> {
+    fn zero() -> Self {
+        Matrix::new((1, 1), vec![T::zero()])
+    }
+
+    fn is_zero(&self) -> bool {
+        self.raw.iter().all(|v| v.is_zero())
+    }
+}

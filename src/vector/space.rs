@@ -9,13 +9,22 @@ pub enum VectorOrientation {
     Undefined,
 }
 
-pub struct VectorSpace<K: Field, const N: usize> {
+pub struct VectorSpace<K: Field> {
+    n: usize,
     _phantom: PhantomData<K>,
 }
 
-impl<K: CField, const N: usize> VectorSpace<K, N> {
-    pub fn unit_vectors() -> [Vector<K, N>; N] {
-        let mut zero = [Vector::new([K::zero(); N]); N];
+impl<K: CField> VectorSpace<K> {
+    pub fn new(n: usize) -> Self {
+        Self {
+            n,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn unit_vectors(&self) -> Vec<Vector<K>> {
+        let mut zero =
+            vec![Vector::from_vec(vec![K::zero(); self.n], VectorOrientation::Undefined); self.n];
         for (i, item) in zero.iter_mut().enumerate() {
             item[i] = K::one()
         }
@@ -23,19 +32,19 @@ impl<K: CField, const N: usize> VectorSpace<K, N> {
     }
 }
 
-impl<K: CField + Finite, const N: usize> VectorSpace<K, N> {
-    pub fn all_vectors() -> Vec<Vector<K, N>> {
+impl<K: CField + Finite> VectorSpace<K> {
+    pub fn all_vectors(&self) -> Vec<Vector<K>> {
         let mut result = Vec::new();
-        let mut buf = Vector::new([K::zero(); N]);
+        let mut buf = Vector::from_vec(vec![K::zero(); self.n], VectorOrientation::Undefined);
 
-        fn permut<K: CField, const N: usize>(
+        fn permut<K: CField>(
             i: usize,
             rem: &[K],
-            result: &mut Vec<Vector<K, N>>,
-            buf: &mut Vector<K, N>,
+            result: &mut Vec<Vector<K>>,
+            buf: &mut Vector<K>,
         ) {
-            if i >= N {
-                result.push(*buf)
+            if i >= buf.len() {
+                result.push(buf.clone())
             } else {
                 for k in 0..rem.len() {
                     let e = rem[k];
@@ -50,18 +59,20 @@ impl<K: CField + Finite, const N: usize> VectorSpace<K, N> {
         result
     }
 
-    pub fn equivalence_classes() -> Vec<Vector<K, N>> {
+    pub fn equivalence_classes(&self) -> Vec<Vector<K>> {
         let scalars = K::all();
-        let mut all = Self::all_vectors();
+        let mut all = self.all_vectors();
         let mut classes = Vec::new();
+
+        all.reverse();
 
         // start with unity vectos -- they cant be in the same class.
         let mut i = 0;
         while i < all.len() {
             if all[i].is_unit() {
-                let unit = all.swap_remove(i);
+                let unit = all.remove(i);
                 // Generate class members
-                all.retain(|e| !scalars.iter().any(|s| unit * s == *e));
+                all.retain(|e| !scalars.iter().any(|s| &unit * s == *e));
                 classes.push(unit);
             } else {
                 i += 1;
@@ -69,8 +80,8 @@ impl<K: CField + Finite, const N: usize> VectorSpace<K, N> {
         }
 
         while !all.is_empty() {
-            let next = all.swap_remove(0);
-            all.retain(|e| !scalars.iter().any(|s| next * s == *e));
+            let next = all.remove(0);
+            all.retain(|e| !scalars.iter().any(|s| &next * s == *e));
             classes.push(next);
         }
 
