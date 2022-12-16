@@ -1,4 +1,7 @@
-use crate::matrix;
+use crate::{
+    lop2::{simplex, SimplexOptions},
+    matrix,
+};
 
 use super::defs::LOP;
 
@@ -6,30 +9,26 @@ use super::defs::LOP;
 fn tabelau() {
     //
     let lop = LOP::Mixed {
-        c: matrix![6.0; -8.0; 1.0;],
+        c: matrix![1.0; 1.0;],
         a_lt: matrix![
-            3.0,  1.0,  0.0;
-            4.0, -1.0,  0.0;
+            1.0, 1.0;
+           -1.0, 1.0;
         ],
-        b_lt: matrix![10.0; 5.0;],
+        b_lt: matrix![40.0; 0.0;],
         a_gt: matrix![
-            1.0,  1.0, -1.0;
+            -2.0, 2.0;
         ],
-        b_gt: matrix![-3.0;],
+        b_gt: matrix![2.0;],
         a_eq: matrix![],
         b_eq: matrix![],
-        labels: Vec::new(),
+        labels: vec![],
     };
 
     let lop = lop.into_standard_form();
-    println!("{lop}");
-    // panic!("A");
-    // return;
 
-    // let simplex = super::Simplex::new(lop);
+    let x = simplex(lop, SimplexOptions { max_steps: 1000 }).unwrap_err();
 
-    // println!("{:?}", simplex.solve(1000));
-    // panic!("A");
+    assert_eq!(x, "soloutions space is empty")
 }
 
 #[test]
@@ -51,8 +50,7 @@ fn lop_example_a() {
         labels: Vec::new(),
     };
 
-    let simplex = super::Simplex::new(lop);
-    let x = simplex.solve(1000).unwrap();
+    let x = simplex(lop, SimplexOptions { max_steps: 1000 }).unwrap();
 
     assert_eq!(x, matrix![1.25; 0.0; 4.25; 6.25; 0.0; 0.0;]);
 }
@@ -71,10 +69,87 @@ fn lop_example_b() {
         labels: Vec::new(),
     };
 
-    let simplex = super::Simplex::new(lop);
-    let x = simplex.solve(1000).unwrap();
+    let x = simplex(lop, SimplexOptions { max_steps: 1000 }).unwrap();
 
     assert_eq!(x, matrix![4.0;5.0;0.0;0.0;0.0;11.0;]);
+}
+
+#[test]
+fn lop_example_c() {
+    //
+    let lop = LOP::Mixed {
+        c: matrix![-20.0; -15.0;],
+        a_lt: matrix![
+            9.0,  5.0;
+        ],
+        b_lt: matrix![45.0;],
+        a_gt: matrix![
+            1.0,  1.0;
+            2.0,  1.0;
+        ],
+        b_gt: matrix![7.0; 8.0;],
+        a_eq: matrix![],
+        b_eq: matrix![],
+        labels: vec!["x".to_string(), "y".to_string()],
+    };
+
+    let lop = lop.into_standard_form();
+
+    let x = simplex(lop, SimplexOptions { max_steps: 1000 }).unwrap();
+
+    assert_eq!(x, matrix![0.0; 9.0; 0.0; 2.0; 1.0;])
+}
+
+#[test]
+fn lop_example_d() {
+    //
+    let lop = LOP::Mixed {
+        c: matrix![-2.0; 1.0; -1.0;],
+        a_lt: matrix![
+            1.0, 1.0, -3.0;
+        ],
+        b_lt: matrix![8.0;],
+        a_gt: matrix![
+            4.0, -1.0, 1.0;
+            2.0, 3.0, -1.0;
+        ],
+        b_gt: matrix![2.0; 4.0;],
+        a_eq: matrix![],
+        b_eq: matrix![],
+        labels: vec!["x".to_string(), "y".to_string(), "z".to_string()],
+    };
+
+    let lop = lop.into_standard_form();
+
+    let x = simplex(lop, SimplexOptions { max_steps: 1000 }).unwrap_err();
+
+    assert_eq!(x, "problem is unbounded")
+}
+
+#[test]
+fn lop_example_e() {
+    //
+    let lop = LOP::Mixed {
+        c: matrix![1.0; 1.0;],
+        a_lt: matrix![
+            1.0, 1.0;
+           -1.0, 1.0;
+        ],
+        b_lt: matrix![40.0; 0.0;],
+        a_gt: matrix![
+            -2.0, 2.0;
+        ],
+        b_gt: matrix![2.0;],
+        a_eq: matrix![],
+        b_eq: matrix![],
+        labels: vec![],
+    };
+
+    let lop = lop.into_standard_form();
+
+    let x = simplex(lop, SimplexOptions { max_steps: 1000 }).unwrap_err();
+
+    assert_eq!(x, "soloutions space is empty")
 }
 
 #[test]
@@ -100,7 +175,7 @@ fn lop_mixed_to_standard_fixed_groups() {
     let LOP::StandardForm { c, a, b,.. } = lop else {
         panic!("into_standard_form() did not return standard form")
     };
-    assert_eq!(c, matrix![6.0; -8.0; 1.0;]);
+    assert_eq!(c, matrix![6.0; -8.0; 1.0; 0.0; 0.0; 0.0; 0.0;]);
     assert_eq!(b, matrix![10.0; 5.0; 3.0; 9.0;]);
     assert_eq!(
         a,
@@ -134,7 +209,7 @@ fn lop_mixed_to_standard_fixed_groups() {
     let LOP::StandardForm { c, a, b,.. } = lop else {
         panic!("into_standard_form() did not return standard form")
     };
-    assert_eq!(c, matrix![6.0; -8.0; 1.0;]);
+    assert_eq!(c, matrix![6.0; -8.0; 1.0; 0.0; 0.0;]);
     assert_eq!(b, matrix![5.0; 9.0; 10.0; 3.0;]);
     assert_eq!(
         a,
@@ -170,7 +245,7 @@ fn lop_mixed_to_standard_mixed_groups() {
     let LOP::StandardForm { c, a, b, .. } = lop else {
         panic!("into_standard_form() did not return standard form")
     };
-    assert_eq!(c, matrix![6.0; -8.0; 1.0;]);
+    assert_eq!(c, matrix![6.0; -8.0; 1.0; 0.0; 0.0; 0.0; 0.0;]);
     assert_eq!(b, matrix![10.0; 3.0; 9.0; 5.0;]);
     assert_eq!(
         a,
@@ -205,7 +280,7 @@ fn lop_mixed_to_standard_mixed_groups() {
     let LOP::StandardForm { c, a, b, .. } = lop else {
         panic!("into_standard_form() did not return standard form")
     };
-    assert_eq!(c, matrix![6.0; -8.0; 1.0;]);
+    assert_eq!(c, matrix![6.0; -8.0; 1.0; 0.0; 0.0; 0.0; 0.0;]);
     assert_eq!(b, matrix![8.0; 10.0; 3.0; 9.0; 5.0;]);
     assert_eq!(
         a,
